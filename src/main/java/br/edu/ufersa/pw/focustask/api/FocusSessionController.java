@@ -5,48 +5,74 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+//TODO com autenticação pode retirar o caminho /users/{userId} de todos aqui
+
 @RestController
-@RequestMapping("/api/v1/focus-sessions")
+@RequestMapping("/api/v1")
 public class FocusSessionController {
 
-    @GetMapping
-    public List<FocusSession> getAllFocusSessions() {
+    @GetMapping("/users/{userId}/focus-sessions")
+    public List<FocusSession> getAllFocusSessions(
+            @PathVariable Long userId
+    ) {
         return null;
     }
 
-    @PostMapping
+    @PostMapping("/users/{userId}/focus-sessions")
     public FocusSession createFocusSession(
+            @PathVariable Long userId,
             @RequestBody FocusSession focusSession
     ) {
         return null;
     }
 
-    @GetMapping("/{focusSessionId}")
+    @GetMapping("/users/{userId}/focus-sessions/{focusSessionId}")
     public FocusSession getFocusSessionById(
+            @PathVariable Long userId,
             @PathVariable Long focusSessionId
     ) {
         return null;
     }
 
-    @PutMapping("/{focusSessionId}")
+    @PutMapping("/users/{userId}/focus-sessions/{focusSessionId}")
     public FocusSession updateFocusSession(
+            @PathVariable Long userId,
             @PathVariable Long focusSessionId,
             @RequestBody FocusSession focusSession
     ) {
         return null;
     }
 
-    @PatchMapping("/{focusSessionId}")
+    @PatchMapping("/users/{userId}/focus-sessions/{focusSessionId}")
     public FocusSession partiallyUpdateFocusSession(
+            @PathVariable Long userId,
             @PathVariable Long focusSessionId,
             @RequestBody FocusSession focusSession
     ) {
         return null;
     }
 
-    @DeleteMapping("/{focusSessionId}")
+    @DeleteMapping("/users/{userId}/focus-sessions/{focusSessionId}")
     public Void deleteFocusSession(
+            @PathVariable Long userId,
             @PathVariable Long focusSessionId
+    ) {
+        return null;
+    }
+
+    @GetMapping("/users/{userId}/tasks/{taskId}/focus-sessions")
+    public List<FocusSession> getFocusSessionsByTask(
+            @PathVariable Long userId,
+            @PathVariable Long taskId
+    ) {
+        return null;
+    }
+
+    @PostMapping("/users/{userId}/tasks/{taskId}/focus-sessions")
+    public FocusSession createFocusSessionForTask(
+            @PathVariable Long userId,
+            @PathVariable Long taskId,
+            @RequestBody FocusSession focusSession
     ) {
         return null;
     }
