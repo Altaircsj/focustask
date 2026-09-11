@@ -53,11 +53,10 @@ public class FocusSessionController {
     }
 
     @DeleteMapping("/users/{userId}/focus-sessions/{focusSessionId}")
-    public Void deleteFocusSession(
+    public void deleteFocusSession(
             @PathVariable Long userId,
             @PathVariable Long focusSessionId
     ) {
-        return null;
     }
 
     @GetMapping("/users/{userId}/tasks/{taskId}/focus-sessions")
