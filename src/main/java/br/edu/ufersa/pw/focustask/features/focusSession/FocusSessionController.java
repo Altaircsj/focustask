@@ -1,6 +1,5 @@
-package br.edu.ufersa.pw.focustask.api;
+package br.edu.ufersa.pw.focustask.features.focusSession;
 
-import br.edu.ufersa.pw.focustask.domain.entities.FocusSession;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
