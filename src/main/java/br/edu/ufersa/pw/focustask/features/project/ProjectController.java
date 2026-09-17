@@ -1,69 +1,34 @@
 package br.edu.ufersa.pw.focustask.features.project;
 
-import br.edu.ufersa.pw.focustask.features.task.Task;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 
-//TODO com autenticação pode retirar o caminho /users/{userId} de todos aqui
-
 @RestController
-@RequestMapping("/api/v1")
+@RequestMapping("/api/v1/users/{userId}/projects")
 public class ProjectController {
 
-    @GetMapping("/users/{userId}/projects")
-    public List<Project> getAllProjects(
-            @PathVariable Long userId
-    ) {
-        return null;
+    @PostMapping
+    public Project create(@PathVariable Long userId, @RequestBody Project project) {
+        return null; // TODO: Implementar via service
     }
 
-    @PostMapping("/users/{userId}/projects")
-    public Project createProject(
-            @PathVariable Long userId,
-            @RequestBody Project project
-    ) {
-        return null;
+    @GetMapping
+    public List<Project> getAllByUser(@PathVariable Long userId) {
+        return null; // TODO
     }
 
-    @GetMapping("/users/{userId}/projects/{projectId}")
-    public Project getProjectById(
-            @PathVariable Long userId,
-            @PathVariable Long projectId
-    ) {
-        return null;
+    @GetMapping("/{projectId}")
+    public Project getById(@PathVariable Long userId, @PathVariable Long projectId) {
+        return null; // TODO
     }
 
-    @PutMapping("/users/{userId}/projects/{projectId}")
-    public Project updateProject(
-            @PathVariable Long userId,
-            @PathVariable Long projectId,
-            @RequestBody Project project
-    ) {
-        return null;
+    @PutMapping("/{projectId}")
+    public Project update(@PathVariable Long userId, @PathVariable Long projectId, @RequestBody Project project) {
+        return null; // TODO
     }
 
-    @PatchMapping("/users/{userId}/projects/{projectId}")
-    public Project partiallyUpdateProject(
-            @PathVariable Long userId,
-            @PathVariable Long projectId,
-            @RequestBody Project project
-    ) {
-        return null;
-    }
-
-    @DeleteMapping("/users/{userId}/projects/{projectId}")
-    public void deleteProject(
-            @PathVariable Long userId,
-            @PathVariable Long projectId
-    ) {
-    }
-
-    @GetMapping("/users/{userId}/projects/{projectId}/tasks")
-    public List<Task> getProjectTasks(
-            @PathVariable Long userId,
-            @PathVariable Long projectId
-    ) {
-        return null;
+    @DeleteMapping("/{projectId}")
+    public void delete(@PathVariable Long userId, @PathVariable Long projectId) {
+        // TODO: Implementar regras transacionais
     }
 }

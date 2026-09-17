@@ -1,66 +1,28 @@
 package br.edu.ufersa.pw.focustask.features.user;
 
-import br.edu.ufersa.pw.focustask.features.focusSession.FocusSession;
-import br.edu.ufersa.pw.focustask.features.project.Project;
-import br.edu.ufersa.pw.focustask.features.task.Task;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/users")
-public class UserController {
-
-    @GetMapping
-    public List<User> getAllUsers() {
-        return null;
-    }
+public class UserController { // Mantido public
 
     @PostMapping
-    public User createUser(@RequestBody User user) {
-        return null;
+    public User create(@RequestBody User user) {
+        return null; // TODO: Implementar usando Service e DTO
     }
 
     @GetMapping("/{userId}")
-    public User getUserById(@PathVariable Long userId) {
-        return null;
+    public User getById(@PathVariable Long userId) {
+        return null; // TODO
     }
 
     @PutMapping("/{userId}")
-    public User updateUser(
-            @PathVariable Long userId,
-            @RequestBody User user
-    ) {
-        return null;
-    }
-
-    @PatchMapping("/{userId}")
-    public User partiallyUpdateUser(
-            @PathVariable Long userId,
-            @RequestBody User user
-    ) {
-        return null;
+    public User update(@PathVariable Long userId, @RequestBody User user) {
+        return null; // TODO
     }
 
     @DeleteMapping("/{userId}")
-    public Void deleteUser(@PathVariable Long userId) {
-        return null;
-    }
-
-    @GetMapping("/{userId}/projects")
-    public List<Project> getUserProjects(@PathVariable Long userId) {
-        return null;
-    }
-
-    @GetMapping("/{userId}/tasks")
-    public List<Task> getUserTasks(@PathVariable Long userId) {
-        return null;
-    }
-
-    @GetMapping("/{userId}/focus-sessions")
-    public List<FocusSession> getUserFocusSessions(
-            @PathVariable Long userId
-    ) {
-        return null;
+    public void delete(@PathVariable Long userId) {
+        // TODO: Implementar deleção em cascata via Service
     }
 }
