@@ -1,18 +1,13 @@
 package br.edu.ufersa.pw.focustask.features.focusSession;
 
-import br.edu.ufersa.pw.focustask.features.task.Task;
-import br.edu.ufersa.pw.focustask.features.user.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -22,29 +17,30 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Objects;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "focus_sessions", indexes = {
         @Index(name = "idx_focus_sessions_user", columnList = "user_id"),
         @Index(name = "idx_focus_sessions_task", columnList = "task_id")
 })
-public class FocusSession {
+class FocusSession {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @NotNull
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false, updatable = false)
-    private User user;
+    @Column(name = "user_id", nullable = false, updatable = false)
+    private Long userId;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = true)
-    @JoinColumn(name = "task_id", nullable = true)
-    private Task task;
+    @Column(name = "task_id")
+    private Long taskId;
 
     @NotNull
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(nullable = false, length = 20)
     private FocusSessionStatus status = FocusSessionStatus.RUNNING;
 
@@ -65,8 +61,8 @@ public class FocusSession {
     protected FocusSession() {
     }
 
-    public FocusSession(User user, Clock clock) {
-        this.user = Objects.requireNonNull(user, "User is required");
+    public FocusSession(Long userId, Clock clock) {
+        this.userId = Objects.requireNonNull(userId, "User ID is required");
         this.startedAt = now(clock);
     }
 
@@ -133,18 +129,18 @@ public class FocusSession {
         return id;
     }
 
-    public User getUser() {
-        return user;
+    public Long getUserId() {
+        return userId;
     }
 
-    public Task getTask() {
-        return task;
+    public Long getTaskId() {
+        return taskId;
     }
 
     // The service must verify that the task belongs to this session's user.
     // Null detaches the task while preserving the session, including after completion.
-    public void setTask(Task task) {
-        this.task = task;
+    public void setTaskId(Long taskId) {
+        this.taskId = taskId;
     }
 
     public FocusSessionStatus getStatus() {

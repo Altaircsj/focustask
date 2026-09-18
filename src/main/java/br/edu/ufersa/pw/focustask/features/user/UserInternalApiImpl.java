@@ -1,10 +1,13 @@
 package br.edu.ufersa.pw.focustask.features.user;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
+@Transactional(readOnly = true)
 class UserInternalApiImpl implements UserInternalApi {
-
     private final UserRepository repository;
 
     UserInternalApiImpl(UserRepository repository) {
@@ -13,13 +16,12 @@ class UserInternalApiImpl implements UserInternalApi {
 
     @Override
     public UserDTO obterUsuarioPorId(Long id) {
-        User user = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
-        return new UserDTO(user.getId(), user.getName(), user.getEmail());
+        return repository.findById(id).orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")).toDTO();
     }
 
     @Override
     public boolean existePorId(Long id) {
-        return repository.existsById(id);
+        return id != null && repository.existsById(id);
     }
 }

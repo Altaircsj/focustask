@@ -1,36 +1,54 @@
 package br.edu.ufersa.pw.focustask.features.project;
 
 import br.edu.ufersa.pw.focustask.features.user.UserInternalApi;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
-class ProjectInternalApiImpl { // Remova 'implements ProjectInternalApi' se não for criar a interface pública do Project por enquanto, ou implemente-a se criar.
-
+@Transactional(readOnly = true)
+class ProjectInternalApiImpl implements ProjectInternalApi {
     private final ProjectRepository repository;
-    private final UserInternalApi userApi; // Injeta a API pública, não o repositório
+    private final UserInternalApi userApi;
 
     ProjectInternalApiImpl(ProjectRepository repository, UserInternalApi userApi) {
         this.repository = repository;
         this.userApi = userApi;
     }
 
+    @Override
+    @Transactional
     public ProjectDTO criarProjeto(Long userId, ProjectDTO dto) {
-        // Usa a Fachada para validar o usuário isoladamente
-        if (!userApi.existePorId(userId)) {
-            throw new RuntimeException("Usuário não encontrado");
-        }
-
-        Project project = new Project(userId, dto.name(), dto.description());
-        Project salvo = repository.save(project);
-
-        return new ProjectDTO(salvo.getId(), salvo.getUserId(), salvo.getName(), salvo.getDescription());
+        requireUser(userId);
+        // Ownership and generated ID come from the server, not from DTO fields.
+        return repository.save(new Project(userId, dto.name(), dto.description())).toDTO();
     }
 
+    @Override
     public List<ProjectDTO> listarPorUsuario(Long userId) {
-        return repository.findAllByUserId(userId).stream()
-                .map(p -> new ProjectDTO(p.getId(), p.getUserId(), p.getName(), p.getDescription()))
-                .collect(Collectors.toList());
+        requireUser(userId);
+        return repository.findAllByUserId(userId).stream().map(Project::toDTO).toList();
+    }
+
+    @Override
+    public boolean pertenceAoUsuario(Long userId, Long projectId) {
+        return userId != null && projectId != null
+                && repository.findByIdAndUserId(projectId, userId).isPresent();
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void excluirPorUsuario(Long userId) {
+        requireUser(userId);
+        repository.deleteAllForUser(userId);
+    }
+
+    private void requireUser(Long userId) {
+        if (!userApi.existePorId(userId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+        }
     }
 }

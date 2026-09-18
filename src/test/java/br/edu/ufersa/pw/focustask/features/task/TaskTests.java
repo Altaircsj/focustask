@@ -1,17 +1,15 @@
 package br.edu.ufersa.pw.focustask.features.task;
 
-import br.edu.ufersa.pw.focustask.features.project.Project;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.mock;
 
 class TaskTests {
 
     @Test
     void rejectsMissingProjectAndInvalidTitles() {
-        Project project = mock(Project.class);
+        Long project = 1L;
 
         assertThrows(NullPointerException.class, () -> new Task(null, "Study"));
         assertThrows(IllegalArgumentException.class, () -> new Task(project, null));
@@ -21,7 +19,7 @@ class TaskTests {
 
     @Test
     void invalidUpdatesPreserveThePreviousValues() {
-        Task task = new Task(mock(Project.class), "Study");
+        Task task = new Task(1L, "Study");
         task.setStatus(TaskStatus.IN_PROGRESS);
         task.setPriority(TaskPriority.HIGH);
 

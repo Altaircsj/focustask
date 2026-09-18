@@ -1,52 +1,50 @@
 package br.edu.ufersa.pw.focustask.features.project;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.util.Objects;
 
 @Entity
-@Table(name = "projects")
-class Project { // Visibilidade default
+@Table(name = "projects", indexes = @Index(name = "idx_projects_user", columnList = "user_id"))
+class Project {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-   @Id
-   @GeneratedValue(strategy = GenerationType.IDENTITY)
-   private Long id;
+    @NotNull
+    @Column(name = "user_id", nullable = false, updatable = false)
+    private Long userId;
 
-   // Substituição da Entidade User pelo seu ID (desacoplamento total)
-   @Column(name = "user_id", nullable = false)
-   private Long userId;
+    @NotBlank
+    @Size(max = 255)
+    @Column(nullable = false, length = 255)
+    private String name;
 
-   @NotBlank
-   @Size(max = 255)
-   @Column(nullable = false)
-   private String name;
+    @Column(columnDefinition = "TEXT")
+    private String description;
 
-   @Column(columnDefinition = "TEXT")
-   private String description;
+    protected Project() {}
 
-   protected Project() {
-   }
+    Project(Long userId, String name, String description) {
+        this.userId = Objects.requireNonNull(userId, "User ID is required");
+        setName(name);
+        this.description = description;
+    }
 
-   public Project(Long userId, String name, String description) {
-      this.userId = userId;
-      this.name = name;
-      this.description = description;
-   }
+    public Long getId() { return id; }
+    public Long getUserId() { return userId; }
+    public String getName() { return name; }
+    public String getDescription() { return description; }
 
-   public Long getId() { return id; }
-   public void setId(Long id) { this.id = id; }
+    public void setName(String name) {
+        if (name == null || name.isBlank() || name.length() > 255) {
+            throw new IllegalArgumentException("Name must contain between 1 and 255 characters");
+        }
+        this.name = name;
+    }
 
-   public Long getUserId() { return userId; }
-   public void setUserId(Long userId) { this.userId = userId; }
-
-   public String getName() { return name; }
-   public void setName(String name) { this.name = name; }
-
-   public String getDescription() { return description; }
-   public void setDescription(String description) { this.description = description; }
+    public void setDescription(String description) { this.description = description; }
+    ProjectDTO toDTO() { return new ProjectDTO(id, userId, name, description); }
 }

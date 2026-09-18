@@ -7,6 +7,13 @@ import java.util.List;
 @RequestMapping("/api/v1/users/{userId}/projects")
 public class ProjectController {
 
+    @PatchMapping("/{projectId}")
+    public ProjectDTO partiallyUpdateProject(@PathVariable Long userId,
+                                            @PathVariable Long projectId,
+                                            @RequestBody ProjectDTO project) {
+        return null; // TODO: Integrar o service e distinguir campos ausentes no PATCH.
+    }
+
     @PostMapping
     public Project create(@PathVariable Long userId, @RequestBody Project project) {
         return null; // TODO: Implementar via service

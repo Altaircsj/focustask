@@ -1,17 +1,13 @@
 package br.edu.ufersa.pw.focustask.features.task;
 
-import br.edu.ufersa.pw.focustask.features.project.Project;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -19,19 +15,20 @@ import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 import java.util.Objects;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "tasks", indexes = @Index(name = "idx_tasks_project", columnList = "project_id"))
-public class Task {
+class Task {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @NotNull
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "project_id", nullable = false)
-    private Project project;
+    @Column(name = "project_id", nullable = false)
+    private Long projectId;
 
     @NotBlank
     @Size(max = 255)
@@ -43,11 +40,13 @@ public class Task {
 
     @NotNull
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(nullable = false, length = 20)
     private TaskStatus status = TaskStatus.TODO;
 
     @NotNull
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(nullable = false, length = 20)
     private TaskPriority priority = TaskPriority.MEDIUM;
 
@@ -57,8 +56,8 @@ public class Task {
     protected Task() {
     }
 
-    public Task(Project project, String title) {
-        setProject(project);
+    public Task(Long projectId, String title) {
+        setProjectId(projectId);
         setTitle(title);
     }
 
@@ -66,13 +65,13 @@ public class Task {
         return id;
     }
 
-    public Project getProject() {
-        return project;
+    public Long getProjectId() {
+        return projectId;
     }
 
     // The service must validate ownership when moving a task between projects.
-    public void setProject(Project project) {
-        this.project = Objects.requireNonNull(project, "Project is required");
+    public void setProjectId(Long projectId) {
+        this.projectId = Objects.requireNonNull(projectId, "Project ID is required");
     }
 
     public String getTitle() {

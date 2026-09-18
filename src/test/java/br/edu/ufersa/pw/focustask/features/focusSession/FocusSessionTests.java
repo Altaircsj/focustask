@@ -1,7 +1,5 @@
 package br.edu.ufersa.pw.focustask.features.focusSession;
 
-import br.edu.ufersa.pw.focustask.features.task.Task;
-import br.edu.ufersa.pw.focustask.features.user.User;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
@@ -10,9 +8,7 @@ import java.time.ZoneOffset;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.mock;
 
 class FocusSessionTests {
 
@@ -20,7 +16,7 @@ class FocusSessionTests {
 
     @Test
     void multiplePausesAccumulateWithoutCountingRepeatedTransitions() {
-        FocusSession session = new FocusSession(mock(User.class), at(0));
+        FocusSession session = new FocusSession(1L, at(0));
 
         session.pause(at(60));
         session.pause(at(90));
@@ -39,7 +35,7 @@ class FocusSessionTests {
 
     @Test
     void completingWhilePausedIncludesTheOpenPauseOnlyOnce() {
-        FocusSession session = new FocusSession(mock(User.class), at(0));
+        FocusSession session = new FocusSession(1L, at(0));
         session.pause(at(60));
 
         session.complete(at(100));
@@ -52,7 +48,7 @@ class FocusSessionTests {
 
     @Test
     void completedSessionCannotBePausedOrResumed() {
-        FocusSession session = new FocusSession(mock(User.class), at(0));
+        FocusSession session = new FocusSession(1L, at(0));
         session.complete(at(60));
 
         assertThrows(IllegalStateException.class, () -> session.pause(at(90)));
@@ -62,19 +58,19 @@ class FocusSessionTests {
 
     @Test
     void standaloneSessionCanBeLinkedAndDetachedAfterCompletionWithoutLosingHistory() {
-        User user = mock(User.class);
-        Task task = mock(Task.class);
+        Long user = 1L;
+        Long task = 2L;
         FocusSession session = new FocusSession(user, at(0));
-        assertNull(session.getTask());
+        assertNull(session.getTaskId());
         session.pause(at(30));
         session.complete(at(60));
 
-        session.setTask(task);
-        assertSame(task, session.getTask());
-        session.setTask(null);
+        session.setTaskId(task);
+        assertEquals(task, session.getTaskId());
+        session.setTaskId(null);
 
-        assertNull(session.getTask());
-        assertSame(user, session.getUser());
+        assertNull(session.getTaskId());
+        assertEquals(user, session.getUserId());
         assertEquals(FocusSessionStatus.COMPLETED, session.getStatus());
         assertEquals(START, session.getStartedAt());
         assertEquals(START.plusSeconds(60), session.getEndedAt());
@@ -83,7 +79,7 @@ class FocusSessionTests {
 
     @Test
     void rejectsEventsBeforeSessionStartWithoutChangingState() {
-        FocusSession session = new FocusSession(mock(User.class), at(0));
+        FocusSession session = new FocusSession(1L, at(0));
 
         assertThrows(IllegalArgumentException.class, () -> session.pause(at(-1)));
         assertThrows(IllegalArgumentException.class, () -> session.complete(at(-1)));
@@ -94,7 +90,7 @@ class FocusSessionTests {
 
     @Test
     void rejectsFinishingAPauseBeforeItStartedWithoutChangingState() {
-        FocusSession session = new FocusSession(mock(User.class), at(0));
+        FocusSession session = new FocusSession(1L, at(0));
         session.pause(at(60));
 
         assertThrows(IllegalArgumentException.class, () -> session.resume(at(59)));
@@ -107,7 +103,7 @@ class FocusSessionTests {
 
     @Test
     void rejectsNegativeActiveDurationAfterAnEarlierPause() {
-        FocusSession session = new FocusSession(mock(User.class), at(0));
+        FocusSession session = new FocusSession(1L, at(0));
         session.pause(at(10));
         session.resume(at(100));
 
