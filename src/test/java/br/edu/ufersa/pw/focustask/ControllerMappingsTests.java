@@ -16,6 +16,9 @@ import static org.junit.jupiter.api.Assertions.*;
 class ControllerMappingsTests {
     @Autowired RequestMappingHandlerMapping mappings;
     @MockitoBean TaskController taskController;
+    @MockitoBean UserController userController;
+    @MockitoBean ProjectController projectController;
+    @MockitoBean FocusSessionController focusSessionController;
 
     @Test
     void preservesAll27DistinctRoutesIncludingTheThreeRestoredOnes() {

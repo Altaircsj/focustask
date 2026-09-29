@@ -1,5 +1,6 @@
 package br.edu.ufersa.pw.focustask.features.task;
 
+import br.edu.ufersa.pw.focustask.shared.exception.EntidadeNaoEncontradaException;
 import br.edu.ufersa.pw.focustask.MySqlIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,16 +9,18 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.springframework.web.server.ResponseStatusException;
+import br.edu.ufersa.pw.focustask.features.task.dto.*;
+import br.edu.ufersa.pw.focustask.shared.exception.GlobalExceptionHandler;
 import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 class TaskMySqlTests extends MySqlIntegrationTest {
-    @Autowired TaskService service;
+    @Autowired TaskApplicationService service;
     @Autowired TaskController controller;
-    @Autowired TaskRepository repository;
+    @Autowired GlobalExceptionHandler handler;
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean TaskRepository repository;
     @Autowired PlatformTransactionManager transactionManager;
 
     @Test
@@ -27,7 +30,7 @@ class TaskMySqlTests extends MySqlIntegrationTest {
         long otherProject = project(user("other@example.com"));
         long existingTask = task(otherProject);
 
-        var response = MockMvcBuilders.standaloneSetup(controller).build()
+        var response = MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(handler).build()
                 .perform(post("/api/v1/projects/{projectId}/tasks", urlProject)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -55,11 +58,12 @@ class TaskMySqlTests extends MySqlIntegrationTest {
 
     @Test
     void postRejectsMissingProjectWithoutWriting() throws Exception {
-        MockMvcBuilders.standaloneSetup(controller).build()
+        MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(handler).build()
                 .perform(post("/api/v1/projects/-1/tasks").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"Study\"}"))
                 .andExpect(status().isNotFound())
-                .andExpect(header().doesNotExist("Location"));
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.detail").value("Project not found"));
 
         assertEquals(0, repository.count());
     }
@@ -106,11 +110,14 @@ class TaskMySqlTests extends MySqlIntegrationTest {
         long task = task(project);
         project(stranger);
 
-        assertEquals(List.of(task), service.getAll(owner).stream().map(Task::getId).toList());
+        assertEquals(List.of(task), service.getAll(owner).stream().map(TaskResponseDTO::id).toList());
         assertTrue(service.getAll(stranger).isEmpty());
-        assertThrows(ResponseStatusException.class, () -> service.getById(stranger, task));
-        assertThrows(ResponseStatusException.class, () -> service.delete(stranger, task));
-        assertThrows(ResponseStatusException.class, () -> service.create(stranger, project, "Task", null, null));
+        assertEquals("Task not found",
+                assertThrows(EntidadeNaoEncontradaException.class, () -> service.getById(stranger, task)).getMessage());
+        assertEquals("Task not found",
+                assertThrows(EntidadeNaoEncontradaException.class, () -> service.delete(stranger, task)).getMessage());
+        assertEquals("Project not found",
+                assertThrows(EntidadeNaoEncontradaException.class, () -> service.getByProject(stranger, project)).getMessage());
         assertTrue(repository.existsById(task));
     }
 
@@ -118,16 +125,16 @@ class TaskMySqlTests extends MySqlIntegrationTest {
     void databaseEnforcesForeignKeysAndEnumsAndAllowsOptionalValues() {
         long owner = user("owner@example.com");
         long project = project(owner);
-        Task task = service.create(owner, project, "Task", null, null);
+        TaskResponseDTO task = service.create(project, new TaskCreateDTO("Task", null, null)).task();
 
-        assertNull(task.getDescription());
-        assertNull(task.getDueDate());
-        assertEquals("TODO", jdbc.queryForObject("select status from tasks where id=?", String.class, task.getId()));
-        assertEquals("MEDIUM", jdbc.queryForObject("select priority from tasks where id=?", String.class, task.getId()));
+        assertNull(task.description());
+        assertNull(task.dueDate());
+        assertEquals("TODO", jdbc.queryForObject("select status from tasks where id=?", String.class, task.id()));
+        assertEquals("MEDIUM", jdbc.queryForObject("select priority from tasks where id=?", String.class, task.id()));
         assertThrows(DataIntegrityViolationException.class,
                 () -> jdbc.update("insert into tasks(project_id,title) values (-1,'Invalid')"));
         assertThrows(DataIntegrityViolationException.class,
-                () -> jdbc.update("update tasks set status='UNKNOWN' where id=?", task.getId()));
+                () -> jdbc.update("update tasks set status='UNKNOWN' where id=?", task.id()));
         assertThrows(DataIntegrityViolationException.class,
                 () -> jdbc.update("delete from projects where id=?", project));
     }
@@ -140,10 +147,26 @@ class TaskMySqlTests extends MySqlIntegrationTest {
         long strangerProject = project(user("stranger@example.com"));
         long task = task(source);
 
-        service.update(owner, task, destination, "Moved", null, TaskStatus.TODO, TaskPriority.MEDIUM, null);
+        service.update(owner, task, new TaskUpdateDTO(destination, "Moved", null, TaskStatusDTO.TODO, TaskPriorityDTO.MEDIUM, null));
         assertEquals(destination, repository.findById(task).orElseThrow().getProjectId());
-        assertThrows(ResponseStatusException.class, () -> service.update(owner, task, strangerProject,
-                "Invalid", null, TaskStatus.TODO, TaskPriority.MEDIUM, null));
+        assertEquals("Project not found",
+                assertThrows(EntidadeNaoEncontradaException.class, () -> service.update(owner, task, new TaskUpdateDTO(strangerProject,
+                "Invalid", null, TaskStatusDTO.TODO, TaskPriorityDTO.MEDIUM, null))).getMessage());
         assertEquals(destination, repository.findById(task).orElseThrow().getProjectId());
+    }
+
+    @Test
+    void coordinatorRollsBackAllDeletionStepsWhenFinalFlushFails() {
+        long owner = user("rollback@example.com");
+        long project = project(owner);
+        long task = task(project);
+        long session = session(owner, task);
+        org.mockito.Mockito.doThrow(new IllegalStateException("Simulated final flush failure"))
+                .when(repository).flush();
+        assertThrows(IllegalStateException.class, () -> service.delete(owner, task));
+        assertEquals(1, jdbc.queryForObject("select count(*) from users where id=?", Integer.class, owner));
+        assertEquals(1, jdbc.queryForObject("select count(*) from projects where id=?", Integer.class, project));
+        assertEquals(1, jdbc.queryForObject("select count(*) from tasks where id=?", Integer.class, task));
+        assertEquals(task, jdbc.queryForObject("select task_id from focus_sessions where id=?", Long.class, session));
     }
 }

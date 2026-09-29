@@ -1,11 +1,10 @@
 package br.edu.ufersa.pw.focustask.features.task;
 
+import br.edu.ufersa.pw.focustask.shared.exception.EntidadeNaoEncontradaException;
 import br.edu.ufersa.pw.focustask.features.project.ProjectInternalApi;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 
 @Service
@@ -43,7 +42,7 @@ class TaskInternalApiImpl implements TaskInternalApi {
     private void requireOwnedProjects(Long userId, List<Long> projectIds) {
         for (Long projectId : projectIds) {
             if (!projectApi.pertenceAoUsuario(userId, projectId)) {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found");
+                throw new EntidadeNaoEncontradaException("Project not found");
             }
         }
     }

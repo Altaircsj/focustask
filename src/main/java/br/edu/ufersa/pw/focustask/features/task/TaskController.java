@@ -1,90 +1,62 @@
 package br.edu.ufersa.pw.focustask.features.task;
 
-import br.edu.ufersa.pw.focustask.features.project.ProjectInternalApi;
-import org.springframework.http.ResponseEntity;
 import br.edu.ufersa.pw.focustask.features.task.dto.*;
 import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
-
 import java.net.URI;
 import java.util.List;
-
-//TODO com autenticação pode retirar o caminho /users/{userId} de todos aqui
 
 @RestController
 @RequestMapping("/api/v1")
 public class TaskController {
-    private final TaskService service;
-    private final TaskMapper mapper;
-    private final ProjectInternalApi projectApi;
+    private final TaskApplicationService service;
 
-    public TaskController(TaskService service, ProjectInternalApi projectApi, TaskMapper mapper) {
-        this.service = service;
-        this.mapper = mapper;
-        this.projectApi = projectApi;
-    }
+    public TaskController(TaskApplicationService service) { this.service = service; }
 
     @GetMapping("/users/{userId}/tasks")
-    public List<TaskResponseDTO> getAllTasks(
-            @PathVariable Long userId
-    ) {
-        return null;
+    public ResponseEntity<List<TaskResponseDTO>> getAll(@PathVariable Long userId) {
+        return ResponseEntity.ok(service.getAll(userId));
     }
 
     @PostMapping("/projects/{projectId}/tasks")
-    public ResponseEntity<TaskResponseDTO> createTask(
+    public ResponseEntity<TaskResponseDTO> create(
             @PathVariable Long projectId,
-            @RequestBody @Valid TaskCreateDTO task,
-            UriComponentsBuilder uriBuilder
-    ) {
-        Long userId = projectApi.obterUsuarioIdPorProjeto(projectId);
-        Task saved = service.create(userId, projectId, task.title(),
-                task.description(), task.dueDate());
+            @RequestBody @Valid TaskCreateDTO dto,
+            UriComponentsBuilder uriBuilder) {
+        TaskCreationResult created = service.create(projectId, dto);
         URI location = uriBuilder.path("/api/v1/users/{userId}/tasks/{taskId}")
-                .buildAndExpand(userId, saved.getId()).toUri();
-        return ResponseEntity.created(location).body(mapper.toResponse(saved));
+                .buildAndExpand(created.userId(), created.task().id()).toUri();
+        return ResponseEntity.created(location).body(created.task());
     }
 
     @GetMapping("/users/{userId}/tasks/{taskId}")
-    public TaskResponseDTO getTaskById(
-            @PathVariable Long userId,
-            @PathVariable Long taskId
-    ) {
-        return null;
+    public ResponseEntity<TaskResponseDTO> getById(@PathVariable Long userId, @PathVariable Long taskId) {
+        return ResponseEntity.ok(service.getById(userId, taskId));
     }
 
     @PutMapping("/users/{userId}/tasks/{taskId}")
-    public TaskResponseDTO updateTask(
-            @PathVariable Long userId,
-            @PathVariable Long taskId,
-            @RequestBody @Valid TaskUpdateDTO task
-    ) {
-        return null;
+    public ResponseEntity<TaskResponseDTO> update(@PathVariable Long userId, @PathVariable Long taskId,
+            @RequestBody @Valid TaskUpdateDTO dto) {
+        return ResponseEntity.ok(service.update(userId, taskId, dto));
     }
 
     @PatchMapping("/users/{userId}/tasks/{taskId}")
-    public TaskResponseDTO partiallyUpdateTask(
-            @PathVariable Long userId,
-            @PathVariable Long taskId,
-            @RequestBody @Valid TaskPatchDTO task
-    ) {
-        return null;
+    public ResponseEntity<TaskResponseDTO> patch(@PathVariable Long userId, @PathVariable Long taskId,
+            @RequestBody @Valid TaskPatchDTO dto) {
+        return ResponseEntity.ok(service.patch(userId, taskId, dto));
     }
 
     @DeleteMapping("/users/{userId}/tasks/{taskId}")
-    public Void deleteTask(
-            @PathVariable Long userId,
-            @PathVariable Long taskId
-    ) {
-        return null;
+    public ResponseEntity<Void> delete(@PathVariable Long userId, @PathVariable Long taskId) {
+        service.delete(userId, taskId);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/users/{userId}/projects/{projectId}/tasks")
-    public List<TaskResponseDTO> getTasksByProject(
-            @PathVariable Long userId,
-            @PathVariable Long projectId
-    ) {
-        return null;
+    public ResponseEntity<List<TaskResponseDTO>> getByProject(@PathVariable Long userId,
+            @PathVariable Long projectId) {
+        return ResponseEntity.ok(service.getByProject(userId, projectId));
     }
 }

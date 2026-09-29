@@ -1,11 +1,10 @@
 package br.edu.ufersa.pw.focustask.features.project;
 
+import br.edu.ufersa.pw.focustask.shared.exception.EntidadeNaoEncontradaException;
 import br.edu.ufersa.pw.focustask.features.user.UserInternalApi;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 
 @Service
@@ -42,7 +41,7 @@ class ProjectInternalApiImpl implements ProjectInternalApi {
     @Override
     public Long obterUsuarioIdPorProjeto(Long projectId) {
         return repository.findById(projectId).map(Project::getUserId).orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
+                () -> new EntidadeNaoEncontradaException("Project not found"));
     }
 
     @Override
@@ -54,7 +53,7 @@ class ProjectInternalApiImpl implements ProjectInternalApi {
 
     private void requireUser(Long userId) {
         if (!userApi.existePorId(userId)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+            throw new EntidadeNaoEncontradaException("User not found");
         }
     }
 }

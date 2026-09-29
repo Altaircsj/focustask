@@ -1,9 +1,8 @@
 package br.edu.ufersa.pw.focustask.features.user;
 
-import org.springframework.http.HttpStatus;
+import br.edu.ufersa.pw.focustask.shared.exception.EntidadeNaoEncontradaException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @Transactional(readOnly = true)
@@ -17,7 +16,7 @@ class UserInternalApiImpl implements UserInternalApi {
     @Override
     public UserDTO obterUsuarioPorId(Long id) {
         return repository.findById(id).orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")).toDTO();
+                () -> new EntidadeNaoEncontradaException("User not found")).toDTO();
     }
 
     @Override

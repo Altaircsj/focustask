@@ -1,5 +1,6 @@
 package br.edu.ufersa.pw.focustask.features.focusSession;
 
+import br.edu.ufersa.pw.focustask.shared.exception.OperacaoInvalidaException;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
@@ -51,8 +52,10 @@ class FocusSessionTests {
         FocusSession session = new FocusSession(1L, at(0));
         session.complete(at(60));
 
-        assertThrows(IllegalStateException.class, () -> session.pause(at(90)));
-        assertThrows(IllegalStateException.class, () -> session.resume(at(90)));
+        assertEquals("A completed session cannot be paused",
+                assertThrows(OperacaoInvalidaException.class, () -> session.pause(at(90))).getMessage());
+        assertEquals("A completed session cannot be resumed",
+                assertThrows(OperacaoInvalidaException.class, () -> session.resume(at(90))).getMessage());
         assertEquals(FocusSessionStatus.COMPLETED, session.getStatus());
     }
 

@@ -1,5 +1,6 @@
 package br.edu.ufersa.pw.focustask.features.focusSession;
 
+import br.edu.ufersa.pw.focustask.shared.exception.OperacaoInvalidaException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -67,7 +68,7 @@ class FocusSession {
     }
 
     public void pause(Clock clock) {
-        requireNotCompleted();
+        requireNotCompleted("paused");
         if (status == FocusSessionStatus.PAUSED) {
             return;
         }
@@ -78,7 +79,7 @@ class FocusSession {
     }
 
     public void resume(Clock clock) {
-        requireNotCompleted();
+        requireNotCompleted("resumed");
         if (status == FocusSessionStatus.RUNNING) {
             return;
         }
@@ -115,9 +116,9 @@ class FocusSession {
         }
     }
 
-    private void requireNotCompleted() {
+    private void requireNotCompleted(String operation) {
         if (status == FocusSessionStatus.COMPLETED) {
-            throw new IllegalStateException("A completed session cannot be restarted");
+            throw new OperacaoInvalidaException("A completed session cannot be " + operation);
         }
     }
 
