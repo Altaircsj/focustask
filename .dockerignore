@@ -1,0 +1,15 @@
+.git
+.github
+.idea
+.vscode
+**/target
+.env
+.env.*
+!.env.example
+*.log
+*.zip
+*.pem
+*.key
+secrets
+README.md
+docs

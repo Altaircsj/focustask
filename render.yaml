@@ -1,0 +1,23 @@
+# Create the PostgreSQL database first, then supply these three values.
+# Alternatively follow docs/RENDER.md to create the Web Service manually.
+services:
+  - type: web
+    name: focustask
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /actuator/health
+    autoDeployTrigger: "off"
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: PORT
+        value: "8080"
+      - key: DB_URL
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false

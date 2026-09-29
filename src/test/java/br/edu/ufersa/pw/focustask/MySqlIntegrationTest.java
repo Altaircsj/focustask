@@ -13,6 +13,7 @@ import org.testcontainers.mysql.MySQLContainer;
 import java.sql.Statement;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 
+@org.springframework.test.context.ActiveProfiles("dev")
 @SpringBootTest
 @Testcontainers(disabledWithoutDocker = true)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)

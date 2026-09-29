@@ -1,5 +1,8 @@
 # FocusTask
 
+Para Docker, PostgreSQL e publicação no Render, consulte [o guia de deploy](docs/RENDER.md).
+O perfil padrão `dev` usa MySQL; o perfil `prod` usa PostgreSQL.
+
 Backend Spring Boot 4.1.1 / Java 21, organizado em `features.user`,
 `features.project`, `features.task` e `features.focusSession`.
 
@@ -221,7 +224,7 @@ Wrapper. A aplicação exige estas variáveis (não versionar credenciais):
 
 Execute `./mvnw spring-boot:run` (Windows: `.\mvnw.cmd spring-boot:run`).
 
-Flyway aplica `V1__create_domain_tables.sql` em um schema vazio previamente
+Flyway aplica `db/migration/mysql/V1__create_domain_tables.sql` em um schema vazio previamente
 criado. Hibernate apenas valida o schema (`ddl-auto=validate`). Não há criação
 automática do banco, `clean`, `create-drop` ou baseline automático. Se já existir
 um schema com dados, revisar sua estrutura e preparar a migração correspondente
