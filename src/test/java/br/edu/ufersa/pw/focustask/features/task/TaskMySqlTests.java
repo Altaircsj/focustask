@@ -133,7 +133,7 @@ class TaskMySqlTests extends MySqlIntegrationTest {
         assertEquals("MEDIUM", jdbc.queryForObject("select priority from tasks where id=?", String.class, task.id()));
         assertThrows(DataIntegrityViolationException.class,
                 () -> jdbc.update("insert into tasks(project_id,title) values (-1,'Invalid')"));
-        assertThrows(DataIntegrityViolationException.class,
+        assertCheckConstraintViolation("ck_tasks_status",
                 () -> jdbc.update("update tasks set status='UNKNOWN' where id=?", task.id()));
         assertThrows(DataIntegrityViolationException.class,
                 () -> jdbc.update("delete from projects where id=?", project));

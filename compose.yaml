@@ -1,12 +1,12 @@
 services:
   db:
-    image: postgres:17
+    image: postgres:18
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-focustask}
       POSTGRES_USER: ${POSTGRES_USER:-focustask}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     volumes:
-      - focustask-postgres:/var/lib/postgresql/data
+      - focustask-postgres:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s

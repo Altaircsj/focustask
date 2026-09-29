@@ -29,7 +29,7 @@ No painel: **New → Postgres**.
 
 - Name: `focustask-db`.
 - Database: `focustask`.
-- Versão: PostgreSQL 17 (igual ao ambiente de teste preparado).
+- Versão: PostgreSQL 18 (igual ao ambiente de teste preparado).
 - Região: escolha uma e use a mesma para a API; o Blueprint incluído usa Oregon.
 - Plano: Free, se disponível na conta. Confira a seleção antes de criar.
 
@@ -108,7 +108,7 @@ bash mvnw -B -ntp clean verify
 
 No Windows: `.\mvnw.cmd -B -ntp clean verify`.
 
-Os testes antigos usam MySQL; `PostgresDeploymentTests` usa PostgreSQL 17 com o perfil prod e o contexto MVC real, passando por Flyway, Hibernate, CRUD, erros e histórico de sessão. Sem Docker, as integrações são puladas: não apresentar isso como validação completa. O workflow `.github/workflows/verify.yml` falha se qualquer teste for pulado.
+Os testes antigos usam MySQL; `PostgresDeploymentTests` usa PostgreSQL 18 com o perfil prod e o contexto MVC real, passando por Flyway, Hibernate, CRUD, erros e histórico de sessão. Sem Docker, as integrações são puladas: não apresentar isso como validação completa. O workflow `.github/workflows/verify.yml` falha se qualquer teste for pulado.
 
 O Dockerfile usa `-DskipTests` para empacotar, pois o banco de testes não está disponível dentro da construção da imagem. Ele ainda compila os testes. O build da imagem não substitui a suíte de integração.
 

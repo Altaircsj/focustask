@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Testcontainers(disabledWithoutDocker = true)
 class PostgresDeploymentTests {
     @Container
-    static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17");
+    static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:18");
 
     @DynamicPropertySource
     static void database(DynamicPropertyRegistry properties) {

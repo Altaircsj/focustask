@@ -59,9 +59,10 @@ class UserMySqlTests extends MySqlIntegrationTest {
         long project = project(owner);
         long task = task(project);
         long session = session(owner, task);
-        org.mockito.Mockito.doThrow(new IllegalStateException("Simulated final flush failure"))
-                .when(repository).flush();
-        assertThrows(IllegalStateException.class, () -> service.delete(owner));
+        var failure = new org.springframework.dao.DataAccessResourceFailureException("Simulated final flush failure");
+        org.mockito.Mockito.doThrow(failure).when(repository).flush();
+        assertSame(failure, assertThrows(org.springframework.dao.DataAccessResourceFailureException.class,
+                () -> service.delete(owner)));
         assertEquals(1, jdbc.queryForObject("select count(*) from users where id=?", Integer.class, owner));
         assertEquals(1, jdbc.queryForObject("select count(*) from projects where id=?", Integer.class, project));
         assertEquals(1, jdbc.queryForObject("select count(*) from tasks where id=?", Integer.class, task));
