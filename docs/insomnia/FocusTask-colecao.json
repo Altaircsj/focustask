@@ -1,0 +1,970 @@
+{
+  "info": {
+    "name": "FocusTask - Render com JWT",
+    "description": "Preparado a partir do ZIP auditado. Importável no Insomnia; formato Postman Collection 2.1. Não executado contra a API. Rode manualmente na ordem. Copie os IDs retornados para o ambiente. Sem autenticação porque o ZIP ainda não implementa Security.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "01 - Cadastro e autenticação",
+      "item": [
+        {
+          "name": "Saúde pública [200]",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/actuator/health",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Cadastrar conta [201]",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo Insomnia\",\n  \"email\": \"{{test_email}}\",\n  \"password\": \"{{test_password}}\"\n}"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Login e copiar token [200]",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{test_email}}\",\n  \"password\": \"{{test_password}}\"\n}"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Minha conta [200]",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/me"
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Criar projeto, tarefa e sessão e copiar IDs",
+      "item": [
+        {
+          "name": "02 Criar projeto [201]",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/projects",
+            "description": "Resultado esperado: HTTP 201. Copie id para project_id.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Projeto Insomnia\",\n  \"description\": \"Dados criados para testar a API\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "03 Criar tarefa no projeto [201]",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/projects/{{project_id}}/tasks",
+            "description": "Resultado esperado: HTTP 201. Copie id para task_id. Confira projectId, status TODO, priority MEDIUM e header Location.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Estudar Spring\",\n  \"description\": \"Primeiro teste de Task\",\n  \"dueDate\": \"2026-10-05\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "04 Criar sessão avulsa [201]",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/focus-sessions",
+            "description": "Resultado esperado: HTTP 201. Copie id para session_id. taskId deve ser null; status RUNNING.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "03 - Consultar dados",
+      "item": [
+        {
+          "name": "Listar usuários com USER [403]",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/users",
+            "description": "Resultado esperado: HTTP 200. "
+          },
+          "response": []
+        },
+        {
+          "name": "Consultar usuário [200]",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/me",
+            "description": "Resultado esperado: HTTP 200. "
+          },
+          "response": []
+        },
+        {
+          "name": "Listar projetos [200]",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/projects",
+            "description": "Resultado esperado: HTTP 200. "
+          },
+          "response": []
+        },
+        {
+          "name": "Consultar projeto [200]",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/projects/{{project_id}}",
+            "description": "Resultado esperado: HTTP 200. "
+          },
+          "response": []
+        },
+        {
+          "name": "Listar tarefas do usuário [200]",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/tasks",
+            "description": "Resultado esperado: HTTP 200. "
+          },
+          "response": []
+        },
+        {
+          "name": "Listar tarefas do projeto [200]",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/projects/{{project_id}}/tasks",
+            "description": "Resultado esperado: HTTP 200. "
+          },
+          "response": []
+        },
+        {
+          "name": "Consultar tarefa [200]",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/tasks/{{task_id}}",
+            "description": "Resultado esperado: HTTP 200. "
+          },
+          "response": []
+        },
+        {
+          "name": "Listar sessões do usuário [200]",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/focus-sessions",
+            "description": "Resultado esperado: HTTP 200. "
+          },
+          "response": []
+        },
+        {
+          "name": "Consultar sessão [200]",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/focus-sessions/{{session_id}}",
+            "description": "Resultado esperado: HTTP 200. "
+          },
+          "response": []
+        },
+        {
+          "name": "Listar sessões da tarefa [200]",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/tasks/{{task_id}}/focus-sessions",
+            "description": "Resultado esperado: HTTP 200. "
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "04 - Atualizar dados",
+      "item": [
+        {
+          "name": "Substituir usuário [200]",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/me",
+            "description": "Resultado esperado: HTTP 200. ",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Teste atualizado\",\n  \"email\": \"{{test_email}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Alterar nome do usuário [200]",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/me",
+            "description": "Resultado esperado: HTTP 200. ",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Teste parcial\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Substituir projeto [200]",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/projects/{{project_id}}",
+            "description": "Resultado esperado: HTTP 200. ",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Projeto atualizado\",\n  \"description\": \"Descrição atualizada\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Alterar nome do projeto [200]",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/projects/{{project_id}}",
+            "description": "Resultado esperado: HTTP 200. ",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Projeto parcial\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Substituir tarefa [200]",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/tasks/{{task_id}}",
+            "description": "Resultado esperado: HTTP 200. ",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"projectId\": {{project_id}}, \"title\": \"Tarefa atualizada\", \"description\": \"Descrição atualizada\", \"status\": \"IN_PROGRESS\", \"priority\": \"HIGH\", \"dueDate\": \"2026-10-05\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Alterar prioridade da tarefa [200]",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/tasks/{{task_id}}",
+            "description": "Resultado esperado: HTTP 200. ",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"priority\": \"LOW\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Vincular sessão e pausar [200]",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/focus-sessions/{{session_id}}",
+            "description": "Resultado esperado: HTTP 200. Confira taskId e pausedAt. Use somente a sessão criada nesta rodada.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"taskId\": {{task_id}}, \"status\": \"PAUSED\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Retomar sessão [200]",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/focus-sessions/{{session_id}}",
+            "description": "Resultado esperado: HTTP 200. Confira pausedAt null. Execute após pausar.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"RUNNING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Criar sessão pela tarefa [201]",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/tasks/{{task_id}}/focus-sessions",
+            "description": "Resultado esperado: HTTP 201. Sem corpo. Esta sessão adicional será desvinculada ao excluir a Task e apagada ao excluir o usuário de teste."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "05 - Validar erros e contratos",
+      "item": [
+        {
+          "name": "Sem token [401]",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/me",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Senha incorreta [401]",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{test_email}}\",\n  \"password\": \"senha-incorreta\"\n}"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Título vazio [400]",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/projects/{{project_id}}/tasks",
+            "description": "Resultado esperado: HTTP 400. Espere ProblemDetail e errors.title.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"   \"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Projeto inexistente [404]",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/projects/-1/tasks",
+            "description": "Resultado esperado: HTTP 404. No código auditado, ID negativo inexistente é 404.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Não deve ser salva\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Email duplicado [409]",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/auth/register",
+            "description": "Resultado esperado: HTTP 409. Execute depois de criar o usuário.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"Duplicado\", \"email\": \"{{test_email}}\", \"password\": \"{{test_password}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PUT incompleto [400]",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/tasks/{{task_id}}",
+            "description": "Resultado esperado: HTTP 400. ",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Faltam campos obrigatórios\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Enum inválido [400]",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/tasks/{{task_id}}",
+            "description": "Resultado esperado: HTTP 400. ",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"INVALIDO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "JSON malformado [400]",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/tasks/{{task_id}}",
+            "description": "Resultado esperado: HTTP 400. ",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\":",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Antiga rota POST de Task [405]",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/tasks",
+            "description": "Resultado esperado: HTTP 405. ",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Não deve criar\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH vazio mantém dados [200]",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/tasks/{{task_id}}",
+            "description": "Resultado esperado: HTTP 200. ",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Concluir sessão [200]",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/focus-sessions/{{session_id}}",
+            "description": "Resultado esperado: HTTP 200. Executar antes do próximo caso; não é um teste de erro.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"COMPLETED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Pausar sessão concluída [422]",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/focus-sessions/{{session_id}}",
+            "description": "Resultado esperado: HTTP 422. 422 é o contrato atual do ZIP, não 409. Confira que o estado permanece COMPLETED.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"PAUSED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "06 - Excluir somente os dados criados nesta rodada",
+      "item": [
+        {
+          "name": "01 Excluir sessão de teste [204]",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/focus-sessions/{{session_id}}",
+            "description": "Resultado esperado: HTTP 204. Corpo vazio. Confira session_id antes de enviar."
+          },
+          "response": []
+        },
+        {
+          "name": "02 Excluir tarefa de teste [204]",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/tasks/{{task_id}}",
+            "description": "Resultado esperado: HTTP 204. Sessões adicionais devem ser preservadas com taskId null."
+          },
+          "response": []
+        },
+        {
+          "name": "03 Excluir projeto de teste [204]",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/projects/{{project_id}}",
+            "description": "Resultado esperado: HTTP 204. "
+          },
+          "response": []
+        },
+        {
+          "name": "04 Excluir usuário de teste [204]",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/me",
+            "description": "Resultado esperado: HTTP 204. Exclui também os dados restantes desse usuário. Use somente user_id criado na etapa 01."
+          },
+          "response": []
+        },
+        {
+          "name": "05 Token da conta excluída [401]",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/me",
+            "description": "Resultado esperado: HTTP 404. "
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

@@ -13,6 +13,7 @@ import org.testcontainers.mysql.MySQLContainer;
 import java.sql.Statement;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 
+@org.springframework.test.context.ActiveProfiles("dev")
 @SpringBootTest
 @Testcontainers(disabledWithoutDocker = true)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
@@ -37,6 +38,17 @@ public abstract class MySqlIntegrationTest {
         jdbc.update("delete from tasks");
         jdbc.update("delete from projects");
         jdbc.update("delete from users");
+    }
+
+    /** MySQL CHECK violations use vendor error 3819 / SQL state HY000.
+     * Spring may expose them as UncategorizedSQLException rather than integrity exceptions. */
+    protected void assertCheckConstraintViolation(String constraint, Runnable operation) {
+        var failure = org.junit.jupiter.api.Assertions.assertThrows(
+                org.springframework.dao.DataAccessException.class, operation::run);
+        Throwable cause = failure.getMostSpecificCause();
+        var sql = org.junit.jupiter.api.Assertions.assertInstanceOf(java.sql.SQLException.class, cause);
+        org.junit.jupiter.api.Assertions.assertEquals(3819, sql.getErrorCode());
+        org.junit.jupiter.api.Assertions.assertTrue(sql.getMessage().contains(constraint), sql.getMessage());
     }
 
     protected long user(String email) {

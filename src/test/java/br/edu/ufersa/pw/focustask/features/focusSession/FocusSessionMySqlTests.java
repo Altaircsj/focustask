@@ -59,9 +59,9 @@ class FocusSessionMySqlTests extends MySqlIntegrationTest {
         long id = service.create(owner, new FocusSessionCreateDTO(null)).id();
         assertThrows(DataIntegrityViolationException.class,
                 () -> jdbc.update("update focus_sessions set task_id=-1 where id=?", id));
-        assertThrows(DataIntegrityViolationException.class,
+        assertCheckConstraintViolation("ck_focus_sessions_state",
                 () -> jdbc.update("update focus_sessions set status='PAUSED' where id=?", id));
-        assertThrows(DataIntegrityViolationException.class,
+        assertCheckConstraintViolation("ck_focus_sessions_paused",
                 () -> jdbc.update("update focus_sessions set total_paused_seconds=-1 where id=?", id));
         assertThrows(DataIntegrityViolationException.class,
                 () -> jdbc.update("delete from users where id=?", owner));

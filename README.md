@@ -387,3 +387,7 @@ Não há arquivo/workspace Insomnia versionado. Fora do escopo: login social, OA
 refresh token, blacklist, MFA, recuperação de senha, gerenciamento administrativo
 completo, endpoint de mudança de senha/role e frontend. Não foram adicionados
 Spring Modulith, ArchUnit ou H2.
+
+## Docker e Render
+
+Veja [deploy com JWT](docs/RENDER.md) e [verificação](docs/VERIFICACAO.md).

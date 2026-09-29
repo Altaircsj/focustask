@@ -1,0 +1,31 @@
+name: Verify Docker and both databases
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Run all tests with MySQL and PostgreSQL containers
+        run: bash mvnw -B -ntp clean verify
+      - name: Reject skipped integration tests
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          reports = list(Path('target/surefire-reports').glob('TEST-*.xml'))
+          assert reports, 'No test reports were generated'
+          skipped = sum(int(ET.parse(p).getroot().get('skipped', 0)) for p in reports)
+          assert skipped == 0, f'{skipped} tests were skipped; verify Docker availability'
+          PY
+      - name: Build runtime image
+        run: docker build -t focustask:verify .
