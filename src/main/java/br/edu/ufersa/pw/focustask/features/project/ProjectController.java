@@ -1,5 +1,7 @@
 package br.edu.ufersa.pw.focustask.features.project;
 
+import br.edu.ufersa.pw.focustask.features.project.dto.*;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -8,29 +10,29 @@ import java.util.List;
 public class ProjectController {
 
     @PatchMapping("/{projectId}")
-    public ProjectDTO partiallyUpdateProject(@PathVariable Long userId,
+    public ProjectResponseDTO partiallyUpdateProject(@PathVariable Long userId,
                                             @PathVariable Long projectId,
-                                            @RequestBody ProjectDTO project) {
-        return null; // TODO: Integrar o service e distinguir campos ausentes no PATCH.
+                                            @RequestBody @Valid ProjectPatchDTO project) {
+        return null; // TODO: Integrar PATCH na etapa dos casos de uso; null não altera.
     }
 
     @PostMapping
-    public Project create(@PathVariable Long userId, @RequestBody Project project) {
+    public ProjectResponseDTO create(@PathVariable Long userId, @RequestBody @Valid ProjectCreateDTO project) {
         return null; // TODO: Implementar via service
     }
 
     @GetMapping
-    public List<Project> getAllByUser(@PathVariable Long userId) {
+    public List<ProjectResponseDTO> getAllByUser(@PathVariable Long userId) {
         return null; // TODO
     }
 
     @GetMapping("/{projectId}")
-    public Project getById(@PathVariable Long userId, @PathVariable Long projectId) {
+    public ProjectResponseDTO getById(@PathVariable Long userId, @PathVariable Long projectId) {
         return null; // TODO
     }
 
     @PutMapping("/{projectId}")
-    public Project update(@PathVariable Long userId, @PathVariable Long projectId, @RequestBody Project project) {
+    public ProjectResponseDTO update(@PathVariable Long userId, @PathVariable Long projectId, @RequestBody @Valid ProjectUpdateDTO project) {
         return null; // TODO
     }
 

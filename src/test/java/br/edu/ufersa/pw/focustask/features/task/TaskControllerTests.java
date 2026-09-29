@@ -3,6 +3,8 @@ package br.edu.ufersa.pw.focustask.features.task;
 import br.edu.ufersa.pw.focustask.features.focusSession.FocusSessionInternalApi;
 import br.edu.ufersa.pw.focustask.features.project.ProjectInternalApi;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -15,11 +17,11 @@ import org.springframework.web.server.ResponseStatusException;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(TaskController.class)
-@Import(TaskService.class)
+@Import({TaskService.class, TaskMapperImpl.class})
 class TaskControllerTests {
     @Autowired MockMvc mvc;
     @MockitoBean TaskRepository repository;
@@ -35,6 +37,48 @@ class TaskControllerTests {
             ReflectionTestUtils.setField(task, "id", 123L);
             return task;
         });
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"title\":null}", "{\"title\":\" \"}"})
+    void invalidCreateBodyReturns400BeforeLookingUpProject(String body) throws Exception {
+        mvc.perform(post("/api/v1/projects/42/tasks").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(repository, projects, sessions);
+    }
+
+    @Test
+    void acceptsPastDueDateAndRejectsOversizedTitle() throws Exception {
+        mvc.perform(post("/api/v1/projects/42/tasks").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"" + "T".repeat(256) + "\"}"))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(repository, projects, sessions);
+        existingProject();
+        mvc.perform(post("/api/v1/projects/42/tasks").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Study\",\"dueDate\":\"2000-01-01\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.dueDate").value("2000-01-01"));
+    }
+
+    @Test
+    void updateAndPatchValidateButKeepExecutionPending() throws Exception {
+        String path = "/api/v1/users/7/tasks/123";
+        mvc.perform(put(path).contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(put(path).contentType(MediaType.APPLICATION_JSON).content("""
+                        {"projectId":42,"title":"Study","status":"TODO","priority":"MEDIUM"}
+                        """))
+                .andExpect(status().isOk()).andExpect(content().string(""));
+        mvc.perform(patch(path).contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isOk()).andExpect(content().string(""));
+        mvc.perform(patch(path).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":null,\"description\":null,\"dueDate\":null}"))
+                .andExpect(status().isOk()).andExpect(content().string(""));
+        mvc.perform(patch(path).contentType(MediaType.APPLICATION_JSON).content("{\"title\":\" \"}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(patch(path).contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"UNKNOWN\"}"))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(repository, projects, sessions);
     }
 
     @Test

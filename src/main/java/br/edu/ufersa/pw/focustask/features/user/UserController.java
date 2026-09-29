@@ -1,5 +1,7 @@
 package br.edu.ufersa.pw.focustask.features.user;
 
+import br.edu.ufersa.pw.focustask.features.user.dto.*;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -7,27 +9,27 @@ import org.springframework.web.bind.annotation.*;
 public class UserController { // Mantido public
 
     @GetMapping
-    public java.util.List<UserDTO> getAllUsers() {
-        return null; // TODO: Integrar o service na etapa dos DTOs HTTP.
+    public java.util.List<UserResponseDTO> getAllUsers() {
+        return null; // TODO: Integrar o service na etapa dos casos de uso.
     }
 
     @PatchMapping("/{userId}")
-    public UserDTO partiallyUpdateUser(@PathVariable Long userId, @RequestBody UserDTO user) {
-        return null; // TODO: Distinguir campos ausentes na etapa dos DTOs HTTP.
+    public UserResponseDTO partiallyUpdateUser(@PathVariable Long userId, @RequestBody @Valid UserPatchDTO user) {
+        return null; // TODO: Integrar PATCH na etapa dos casos de uso; null não altera.
     }
 
     @PostMapping
-    public User create(@RequestBody User user) {
-        return null; // TODO: Implementar usando Service e DTO
+    public UserResponseDTO create(@RequestBody @Valid UserCreateDTO user) {
+        return null; // TODO: Integrar o service na etapa dos casos de uso
     }
 
     @GetMapping("/{userId}")
-    public User getById(@PathVariable Long userId) {
+    public UserResponseDTO getById(@PathVariable Long userId) {
         return null; // TODO
     }
 
     @PutMapping("/{userId}")
-    public User update(@PathVariable Long userId, @RequestBody User user) {
+    public UserResponseDTO update(@PathVariable Long userId, @RequestBody @Valid UserUpdateDTO user) {
         return null; // TODO
     }
 

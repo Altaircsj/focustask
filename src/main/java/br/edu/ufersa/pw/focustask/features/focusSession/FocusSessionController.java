@@ -1,5 +1,7 @@
 package br.edu.ufersa.pw.focustask.features.focusSession;
 
+import br.edu.ufersa.pw.focustask.features.focusSession.dto.*;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -11,22 +13,22 @@ import java.util.List;
 public class FocusSessionController {
 
     @GetMapping("/users/{userId}/focus-sessions")
-    public List<FocusSession> getAllFocusSessions(
+    public List<FocusSessionResponseDTO> getAllFocusSessions(
             @PathVariable Long userId
     ) {
         return null;
     }
 
     @PostMapping("/users/{userId}/focus-sessions")
-    public FocusSession createFocusSession(
+    public FocusSessionResponseDTO createFocusSession(
             @PathVariable Long userId,
-            @RequestBody FocusSession focusSession
+            @RequestBody @Valid FocusSessionCreateDTO focusSession
     ) {
         return null;
     }
 
     @GetMapping("/users/{userId}/focus-sessions/{focusSessionId}")
-    public FocusSession getFocusSessionById(
+    public FocusSessionResponseDTO getFocusSessionById(
             @PathVariable Long userId,
             @PathVariable Long focusSessionId
     ) {
@@ -34,19 +36,19 @@ public class FocusSessionController {
     }
 
     @PutMapping("/users/{userId}/focus-sessions/{focusSessionId}")
-    public FocusSession updateFocusSession(
+    public FocusSessionResponseDTO updateFocusSession(
             @PathVariable Long userId,
             @PathVariable Long focusSessionId,
-            @RequestBody FocusSession focusSession
+            @RequestBody @Valid FocusSessionUpdateDTO focusSession
     ) {
         return null;
     }
 
     @PatchMapping("/users/{userId}/focus-sessions/{focusSessionId}")
-    public FocusSession partiallyUpdateFocusSession(
+    public FocusSessionResponseDTO partiallyUpdateFocusSession(
             @PathVariable Long userId,
             @PathVariable Long focusSessionId,
-            @RequestBody FocusSession focusSession
+            @RequestBody @Valid FocusSessionPatchDTO focusSession
     ) {
         return null;
     }
@@ -59,7 +61,7 @@ public class FocusSessionController {
     }
 
     @GetMapping("/users/{userId}/tasks/{taskId}/focus-sessions")
-    public List<FocusSession> getFocusSessionsByTask(
+    public List<FocusSessionResponseDTO> getFocusSessionsByTask(
             @PathVariable Long userId,
             @PathVariable Long taskId
     ) {
@@ -67,10 +69,9 @@ public class FocusSessionController {
     }
 
     @PostMapping("/users/{userId}/tasks/{taskId}/focus-sessions")
-    public FocusSession createFocusSessionForTask(
+    public FocusSessionResponseDTO createFocusSessionForTask(
             @PathVariable Long userId,
-            @PathVariable Long taskId,
-            @RequestBody FocusSession focusSession
+            @PathVariable Long taskId
     ) {
         return null;
     }
