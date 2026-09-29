@@ -19,8 +19,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(ProjectController.class)
-class ProjectControllerTests {
-    @Autowired MockMvc mvc;
+class ProjectControllerTests extends br.edu.ufersa.pw.focustask.AuthenticatedMvcTest {
     @MockitoBean ProjectApplicationService service;
 
     @ParameterizedTest
@@ -40,27 +39,27 @@ class ProjectControllerTests {
         if (body != null) request.contentType(MediaType.APPLICATION_JSON).content(body);
         var result = mvc.perform(request).andExpect(status().is(method.equals("POST") ? 201 : method.equals("DELETE") ? 204 : 200));
         if (method.equals("DELETE")) result.andExpect(content().string(""));
-        else result.andExpect(jsonPath(method.equals("GET") && (url.equals("/api/v1/users/7/projects")) ? "$[0].id" : "$.id").value(42));
-        if (method.equals("POST")) result.andExpect(header().string("Location", "http://localhost/api/v1/users/7/projects/42"));
+        else result.andExpect(jsonPath(method.equals("GET") && (url.equals("/api/v1/projects")) ? "$[0].id" : "$.id").value(42));
+        if (method.equals("POST")) result.andExpect(header().string("Location", "http://localhost/api/v1/projects/42"));
         switch (method) {
             case "POST" -> { verify(service).create(7L, new ProjectCreateDTO("Study", null)); }
             case "PUT" -> { verify(service).update(7L, 42L, new ProjectUpdateDTO("Study", null)); }
             case "PATCH" -> { verify(service).patch(7L, 42L, new ProjectPatchDTO(null, null)); }
             case "DELETE" -> { verify(service).delete(7L, 42L); }
-            case "GET" -> { if (url.equals("/api/v1/users/7/projects")) verify(service).getAll(7L);
+            case "GET" -> { if (url.equals("/api/v1/projects")) verify(service).getAll(7L);
                 else verify(service).getById(7L, 42L); }
         }
     }
 
     static Stream<Arguments> validRequests() {
         return Stream.of(
-                Arguments.of("POST", "/api/v1/users/7/projects", "{\"name\":\"Study\"}"),
-                Arguments.of("PUT", "/api/v1/users/7/projects/42", "{\"name\":\"Study\"}"),
-                Arguments.of("PATCH", "/api/v1/users/7/projects/42", "{}"),
-                Arguments.of("PATCH", "/api/v1/users/7/projects/42", "{\"name\":null}"),
-                Arguments.of("GET", "/api/v1/users/7/projects", null),
-                Arguments.of("GET", "/api/v1/users/7/projects/42", null),
-                Arguments.of("DELETE", "/api/v1/users/7/projects/42", null));
+                Arguments.of("POST", "/api/v1/projects", "{\"name\":\"Study\"}"),
+                Arguments.of("PUT", "/api/v1/projects/42", "{\"name\":\"Study\"}"),
+                Arguments.of("PATCH", "/api/v1/projects/42", "{}"),
+                Arguments.of("PATCH", "/api/v1/projects/42", "{\"name\":null}"),
+                Arguments.of("GET", "/api/v1/projects", null),
+                Arguments.of("GET", "/api/v1/projects/42", null),
+                Arguments.of("DELETE", "/api/v1/projects/42", null));
     }
 
     @ParameterizedTest
@@ -77,15 +76,15 @@ class ProjectControllerTests {
 
     static Stream<Arguments> invalidRequests() {
         return Stream.of(
-                Arguments.of("POST", "/api/v1/users/7/projects", "{}"),
-                Arguments.of("PUT", "/api/v1/users/7/projects/42", "{}"),
-                Arguments.of("PATCH", "/api/v1/users/7/projects/42", "{\"name\":\" \"}"));
+                Arguments.of("POST", "/api/v1/projects", "{}"),
+                Arguments.of("PUT", "/api/v1/projects/42", "{}"),
+                Arguments.of("PATCH", "/api/v1/projects/42", "{\"name\":\" \"}"));
     }
 
     @Test
     void unavailableProjectReturnsContextual404() throws Exception {
         when(service.getById(7L, 42L)).thenThrow(new EntidadeNaoEncontradaException("Project not found"));
-        mvc.perform(get("/api/v1/users/7/projects/42"))
+        mvc.perform(get("/api/v1/projects/42"))
                 .andExpect(status().isNotFound()).andExpect(jsonPath("$.detail").value("Project not found"));
     }
 

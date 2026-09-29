@@ -22,6 +22,7 @@ public abstract class MySqlIntegrationTest {
 
     @DynamicPropertySource
     static void database(DynamicPropertyRegistry properties) {
+        properties.add("api.security.token.secret", () -> "mysql-test-only-secret-32-bytes-minimum");
         properties.add("spring.datasource.url", MYSQL::getJdbcUrl);
         properties.add("spring.datasource.username", MYSQL::getUsername);
         properties.add("spring.datasource.password", MYSQL::getPassword);
@@ -39,7 +40,8 @@ public abstract class MySqlIntegrationTest {
     }
 
     protected long user(String email) {
-        return insert("insert into users(name,email) values (?,?)", "Student", email);
+        return insert("insert into users(name,email,password_hash) values (?,?,?)", "Student", email,
+                new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode("secret12"));
     }
 
     protected long project(long userId) {

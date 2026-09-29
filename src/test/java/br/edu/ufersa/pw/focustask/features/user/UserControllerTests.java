@@ -19,8 +19,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(UserController.class)
-class UserControllerTests {
-    @Autowired MockMvc mvc;
+class UserControllerTests extends br.edu.ufersa.pw.focustask.AuthenticatedMvcTest {
     @MockitoBean UserApplicationService service;
 
     @ParameterizedTest
@@ -28,7 +27,6 @@ class UserControllerTests {
     void validContractsDelegateAndReturnResponses(String method, String url, String body) throws Exception {
         var saved = new UserResponseDTO(7L, "Carol", "carol@example.com");
         switch (method) {
-            case "POST" -> { when(service.create(any(UserCreateDTO.class))).thenReturn(saved); }
             case "PUT" -> when(service.update(eq(7L), any(UserUpdateDTO.class))).thenReturn(saved);
             case "PATCH" -> when(service.patch(eq(7L), any(UserPatchDTO.class))).thenReturn(saved);
             case "GET" -> {
@@ -41,9 +39,8 @@ class UserControllerTests {
         var result = mvc.perform(request).andExpect(status().is(method.equals("POST") ? 201 : method.equals("DELETE") ? 204 : 200));
         if (method.equals("DELETE")) result.andExpect(content().string(""));
         else result.andExpect(jsonPath(method.equals("GET") && (url.equals("/api/v1/users")) ? "$[0].id" : "$.id").value(7));
-        if (method.equals("POST")) result.andExpect(header().string("Location", "http://localhost/api/v1/users/7"));
+        if (method.equals("POST")) result.andExpect(header().string("Location", "http://localhost/api/v1/me"));
         switch (method) {
-            case "POST" -> { verify(service).create(new UserCreateDTO("Carol", "carol@example.com")); }
             case "PUT" -> { verify(service).update(7L, new UserUpdateDTO("Carol", "carol@example.com")); }
             case "PATCH" -> { verify(service).patch(7L, new UserPatchDTO(null, null)); }
             case "DELETE" -> { verify(service).delete(7L); }
@@ -54,13 +51,12 @@ class UserControllerTests {
 
     static Stream<Arguments> validRequests() {
         return Stream.of(
-                Arguments.of("POST", "/api/v1/users", "{\"name\":\"Carol\",\"email\":\"carol@example.com\"}"),
-                Arguments.of("PUT", "/api/v1/users/7", "{\"name\":\"Carol\",\"email\":\"carol@example.com\"}"),
-                Arguments.of("PATCH", "/api/v1/users/7", "{}"),
-                Arguments.of("PATCH", "/api/v1/users/7", "{\"name\":null}"),
+                Arguments.of("PUT", "/api/v1/me", "{\"name\":\"Carol\",\"email\":\"carol@example.com\"}"),
+                Arguments.of("PATCH", "/api/v1/me", "{}"),
+                Arguments.of("PATCH", "/api/v1/me", "{\"name\":null}"),
                 Arguments.of("GET", "/api/v1/users", null),
-                Arguments.of("GET", "/api/v1/users/7", null),
-                Arguments.of("DELETE", "/api/v1/users/7", null));
+                Arguments.of("GET", "/api/v1/me", null),
+                Arguments.of("DELETE", "/api/v1/me", null));
     }
 
     @ParameterizedTest
@@ -77,29 +73,28 @@ class UserControllerTests {
 
     static Stream<Arguments> invalidRequests() {
         return Stream.of(
-                Arguments.of("POST", "/api/v1/users", "{}"),
-                Arguments.of("PUT", "/api/v1/users/7", "{}"),
-                Arguments.of("PATCH", "/api/v1/users/7", "{\"email\":\"invalid\"}"));
+                Arguments.of("PUT", "/api/v1/me", "{}"),
+                Arguments.of("PATCH", "/api/v1/me", "{\"email\":\"invalid\"}"));
     }
 
     @Test
     void missingUserReturns404() throws Exception {
-        when(service.getById(99L)).thenThrow(new EntidadeNaoEncontradaException("User not found"));
-        mvc.perform(get("/api/v1/users/99"))
+        when(service.getById(7L)).thenThrow(new EntidadeNaoEncontradaException("User not found"));
+        mvc.perform(get("/api/v1/me"))
                 .andExpect(status().isNotFound()).andExpect(jsonPath("$.detail").value("User not found"));
     }
 
     @Test
     void duplicateEmailReturns409() throws Exception {
-        when(service.create(any(UserCreateDTO.class))).thenThrow(new EmailAlreadyExistsException());
-        mvc.perform(post("/api/v1/users").contentType(MediaType.APPLICATION_JSON)
+        when(service.patch(eq(7L), any(UserPatchDTO.class))).thenThrow(new EmailAlreadyExistsException());
+        mvc.perform(patch("/api/v1/me").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"Carol\",\"email\":\"carol@example.com\"}"))
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.detail").value("Email already registered"));
     }
 
     @Test
     void validationKeepsMultipleMessagesPerFieldWithoutRejectedValues() throws Exception {
-        mvc.perform(patch("/api/v1/users/7").locale(java.util.Locale.ENGLISH)
+        mvc.perform(patch("/api/v1/me").locale(java.util.Locale.ENGLISH)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"\",\"email\":\"invalid-secret\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.name", org.hamcrest.Matchers.hasSize(2)))

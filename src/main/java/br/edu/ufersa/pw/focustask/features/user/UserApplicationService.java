@@ -36,17 +36,10 @@ class UserApplicationService {
     public UserResponseDTO getById(Long userId) { return mapper.toResponse(requireUser(userId)); }
 
     @Transactional
-    public UserResponseDTO create(UserCreateDTO dto) {
-        User user = mapper.toEntity(dto);
-        domain.validarCriacao(user);
-        return mapper.toResponse(repository.save(user));
-    }
-
-    @Transactional
     public UserResponseDTO update(Long userId, UserUpdateDTO dto) {
         User current = requireUser(userId);
         // Validate a detached candidate before a uniqueness query can auto-flush managed changes.
-        User candidate = new User(current.getName(), current.getEmail());
+        User candidate = current.copy();
         mapper.updateEntityFromDto(dto, candidate);
         domain.validarAtualizacao(candidate, userId);
         mapper.updateEntityFromDto(dto, current);
@@ -56,7 +49,7 @@ class UserApplicationService {
     @Transactional
     public UserResponseDTO patch(Long userId, UserPatchDTO dto) {
         User current = requireUser(userId);
-        User candidate = new User(current.getName(), current.getEmail());
+        User candidate = current.copy();
         mapper.patchEntityFromDto(dto, candidate);
         if (dto.email() != null) domain.validarAtualizacao(candidate, userId);
         mapper.patchEntityFromDto(dto, current);

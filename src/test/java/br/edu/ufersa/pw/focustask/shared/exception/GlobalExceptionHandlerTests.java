@@ -34,8 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(GlobalExceptionHandlerTests.FailureController.class)
 @Import({GlobalExceptionHandler.class, GlobalExceptionHandlerTests.FailureController.class})
-class GlobalExceptionHandlerTests {
-    @Autowired MockMvc mvc;
+class GlobalExceptionHandlerTests extends br.edu.ufersa.pw.focustask.AuthenticatedMvcTest {
     @Autowired GlobalExceptionHandler handler;
     @Autowired Environment environment;
     @MockitoBean FailureSource source;

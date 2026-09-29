@@ -12,7 +12,7 @@ class UserMapperTests {
 
     @Test
     void createsThroughDomainConstructorAndMapsResponses() {
-        User user = mapper.toEntity(new UserCreateDTO("Carol", "  CAROL@example.com  "));
+        User user = new User("Carol", "  CAROL@example.com  ", "test-hash");
         assertNull(user.getId());
         assertEquals("carol@example.com", user.getEmail());
         ReflectionTestUtils.setField(user, "id", 7L);
@@ -22,7 +22,7 @@ class UserMapperTests {
 
     @Test
     void updateAndPatchPreserveIdentityAndDomainNormalization() {
-        User user = new User("Before", "before@example.com");
+        User user = new User("Before", "before@example.com", "test-hash");
         ReflectionTestUtils.setField(user, "id", 7L);
         mapper.updateEntityFromDto(new UserUpdateDTO("After", "AFTER@example.com"), user);
         mapper.patchEntityFromDto(new UserPatchDTO(null, null), user);

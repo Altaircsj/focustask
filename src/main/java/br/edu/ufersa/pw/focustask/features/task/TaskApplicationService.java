@@ -44,10 +44,10 @@ class TaskApplicationService {
     }
 
     @Transactional
-    public TaskCreationResult create(Long projectId, TaskCreateDTO dto) {
-        Long userId = projects.obterUsuarioIdPorProjeto(projectId);
+    public TaskResponseDTO create(Long userId, Long projectId, TaskCreateDTO dto) {
+        if (!projects.pertenceAoUsuario(userId, projectId)) throw new EntidadeNaoEncontradaException("Project not found");
         Task saved = repository.save(mapper.toEntity(dto, projectId));
-        return new TaskCreationResult(userId, mapper.toResponse(saved));
+        return mapper.toResponse(saved);
     }
 
     @Transactional

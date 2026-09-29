@@ -2,10 +2,10 @@ package br.edu.ufersa.pw.focustask.features.user;
 
 import br.edu.ufersa.pw.focustask.features.user.dto.*;
 import jakarta.validation.Valid;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import br.edu.ufersa.pw.focustask.shared.security.AuthenticatedUser;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.util.UriComponentsBuilder;
-import java.net.URI;
 import java.util.List;
 
 @RestController
@@ -20,35 +20,26 @@ public class UserController {
         return ResponseEntity.ok(service.getAll());
     }
 
-    @PostMapping("/users")
-    public ResponseEntity<UserResponseDTO> create(@RequestBody @Valid UserCreateDTO dto,
-            UriComponentsBuilder uriBuilder) {
-        UserResponseDTO saved = service.create(dto);
-        URI location = uriBuilder.path("/api/v1/users/{userId}")
-                .buildAndExpand(saved.id()).toUri();
-        return ResponseEntity.created(location).body(saved);
+    @GetMapping("/me")
+    public ResponseEntity<UserResponseDTO> getById(@AuthenticationPrincipal AuthenticatedUser principal) {
+        return ResponseEntity.ok(service.getById(principal.getId()));
     }
 
-    @GetMapping("/users/{userId}")
-    public ResponseEntity<UserResponseDTO> getById(@PathVariable Long userId) {
-        return ResponseEntity.ok(service.getById(userId));
-    }
-
-    @PutMapping("/users/{userId}")
-    public ResponseEntity<UserResponseDTO> update(@PathVariable Long userId,
+    @PutMapping("/me")
+    public ResponseEntity<UserResponseDTO> update(@AuthenticationPrincipal AuthenticatedUser principal,
             @RequestBody @Valid UserUpdateDTO dto) {
-        return ResponseEntity.ok(service.update(userId, dto));
+        return ResponseEntity.ok(service.update(principal.getId(), dto));
     }
 
-    @PatchMapping("/users/{userId}")
-    public ResponseEntity<UserResponseDTO> patch(@PathVariable Long userId,
+    @PatchMapping("/me")
+    public ResponseEntity<UserResponseDTO> patch(@AuthenticationPrincipal AuthenticatedUser principal,
             @RequestBody @Valid UserPatchDTO dto) {
-        return ResponseEntity.ok(service.patch(userId, dto));
+        return ResponseEntity.ok(service.patch(principal.getId(), dto));
     }
 
-    @DeleteMapping("/users/{userId}")
-    public ResponseEntity<Void> delete(@PathVariable Long userId) {
-        service.delete(userId);
+    @DeleteMapping("/me")
+    public ResponseEntity<Void> delete(@AuthenticationPrincipal AuthenticatedUser principal) {
+        service.delete(principal.getId());
         return ResponseEntity.noContent().build();
     }
 }
