@@ -4,16 +4,65 @@ import br.edu.ufersa.pw.focustask.MySqlIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 class TaskMySqlTests extends MySqlIntegrationTest {
     @Autowired TaskService service;
+    @Autowired TaskController controller;
     @Autowired TaskRepository repository;
     @Autowired PlatformTransactionManager transactionManager;
+
+    @Test
+    void postPersistsFreshTaskUnderUrlProjectAndKeepsExistingTask() throws Exception {
+        long owner = user("owner@example.com");
+        long urlProject = project(owner);
+        long otherProject = project(user("other@example.com"));
+        long existingTask = task(otherProject);
+
+        var response = MockMvcBuilders.standaloneSetup(controller).build()
+                .perform(post("/api/v1/projects/{projectId}/tasks", urlProject)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"id":%d,"projectId":%d,"title":"New task",
+                                 "description":"Study examples","dueDate":"2026-10-05"}
+                                """.formatted(existingTask, otherProject)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.projectId").value(urlProject))
+                .andReturn().getResponse();
+
+        Task created = repository.findAllByProjectId(urlProject).getFirst();
+        assertNotEquals(existingTask, created.getId());
+        assertEquals("New task", created.getTitle());
+        assertEquals("Study examples", created.getDescription());
+        assertEquals(java.time.LocalDate.of(2026, 10, 5), created.getDueDate());
+        assertEquals(TaskStatus.TODO, created.getStatus());
+        assertEquals(TaskPriority.MEDIUM, created.getPriority());
+        assertEquals("http://localhost/api/v1/users/" + owner + "/tasks/" + created.getId(),
+                response.getHeader("Location"));
+        Task original = repository.findById(existingTask).orElseThrow();
+        assertEquals(otherProject, original.getProjectId());
+        assertEquals("Task", original.getTitle());
+        assertEquals(2, repository.count());
+    }
+
+    @Test
+    void postRejectsMissingProjectWithoutWriting() throws Exception {
+        MockMvcBuilders.standaloneSetup(controller).build()
+                .perform(post("/api/v1/projects/-1/tasks").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Study\"}"))
+                .andExpect(status().isNotFound())
+                .andExpect(header().doesNotExist("Location"));
+
+        assertEquals(0, repository.count());
+    }
 
     @Test
     void taskDeletionPreservesLinkedAndStandaloneHistory() {

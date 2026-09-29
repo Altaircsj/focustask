@@ -9,10 +9,37 @@ Entities e repositories são package-private. Vínculos entre features usam IDs;
 as APIs `*InternalApi` expõem apenas IDs, DTOs e operações necessárias.
 Os services implementam a persistência e as exclusões transacionais.
 
-Os controllers ainda são esboços: a implementação HTTP completa e os DTOs de
-entrada/saída de Task e FocusSession ficam para a próxima etapa. As 27 rotas
-distintas estão preservadas, incluindo GET de usuários e PATCH de User/Project.
-Não há autenticação nem frontend React neste checkout.
+O POST de Task está funcional em `/api/v1/projects/{projectId}/tasks`, substituindo
+`POST /api/v1/users/{userId}/tasks` (sem alias). Os demais endpoints ainda são
+esboços. Permanecem 27 rotas distintas, incluindo GET de usuários e PATCH de
+User/Project. Não há autenticação nem frontend React neste checkout.
+
+### Criação de Task
+
+```http
+POST /api/v1/projects/42/tasks
+Content-Type: application/json
+
+{
+  "title": "Revisar Spring Data JPA",
+  "description": "Estudar os exemplos da disciplina",
+  "dueDate": "2026-10-05"
+}
+```
+
+O `projectId` da URL determina a associação. O controller consulta o proprietário
+do projeto pela API interna e reutiliza `TaskService.create`. Somente `title`,
+`description` e `dueDate` do corpo são encaminhados; `id` e `projectId` enviados
+no corpo não determinam a identidade nem a associação da nova Task. Status e
+prioridade começam em `TODO` e `MEDIUM`, conforme o service existente.
+
+Projeto inexistente retorna `404`. A criação retorna `201 Created`, a Task salva
+e `Location` para `/api/v1/users/{userId}/tasks/{taskId}`, usando o proprietário
+persistido e o ID gerado. O GET dessa URI ainda é um esboço e não recupera a Task.
+A consulta do proprietário não autentica o solicitante.
+
+O uso de Entity como entrada/saída HTTP é temporário; DTOs HTTP e Bean Validation
+ficam para a próxima etapa.
 
 ## Banco e execução
 
@@ -62,9 +89,12 @@ responsabilidade dos services, não de uma FK isolada.
 Execute `./mvnw test` (Windows: `.\mvnw.cmd test`).
 
 - Testes unitários cobrem transições de sessão, validações de propriedade e ordem
-  das exclusões. O teste MVC verifica o registro das rotas, não um CRUD funcional.
+  das exclusões. O teste de mapeamentos verifica as 27 rotas e a substituição do POST.
+- Testes MVC do POST de Task verificam associação pela URL, identidade gerada,
+  valores iniciais, `201`, `Location` com contexto, `404` e rejeição da rota antiga.
 - Testes que estendem `MySqlIntegrationTest` usam Testcontainers com `mysql:8.4`,
-  aplicam a migration real e verificam consultas, FKs, exclusões e rollback.
+  aplicam a migration real e verificam consultas, FKs, exclusões e rollback,
+  além da persistência pelo novo POST sem sobrescrever Tasks existentes.
 - Sem Docker disponível, esses testes de integração são explicitamente marcados
   como **skipped**. Um build nessas condições não comprova a integração MySQL.
 - Com Docker em execução, rode a suíte completa e confirme zero testes pulados

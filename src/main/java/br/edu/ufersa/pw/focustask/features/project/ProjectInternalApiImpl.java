@@ -40,6 +40,12 @@ class ProjectInternalApiImpl implements ProjectInternalApi {
     }
 
     @Override
+    public Long obterUsuarioIdPorProjeto(Long projectId) {
+        return repository.findById(projectId).map(Project::getUserId).orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
+    }
+
+    @Override
     @Transactional(propagation = Propagation.MANDATORY)
     public void excluirPorUsuario(Long userId) {
         requireUser(userId);
