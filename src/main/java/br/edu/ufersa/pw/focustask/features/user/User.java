@@ -5,6 +5,8 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.util.Locale;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "users", uniqueConstraints = @UniqueConstraint(name = "uk_users_email", columnNames = "email"))
@@ -24,12 +26,37 @@ class User {
     @Column(nullable = false, length = 254)
     private String email;
 
+    @NotBlank
+    @Size(max = 255)
+    @Column(name = "password_hash", nullable = false, length = 255)
+    private String passwordHash;
+
+    @jakarta.validation.constraints.NotNull
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(nullable = false, length = 20)
+    private UserRole role = UserRole.USER;
+
     protected User() {}
 
-    User(String name, String email) {
+    User(String name, String email, String passwordHash) {
         setName(name);
         setEmail(email);
+        if (passwordHash == null || passwordHash.isBlank() || passwordHash.length() > 255) {
+            throw new IllegalArgumentException("Password hash is required and must fit the stored field");
+        }
+        this.passwordHash = passwordHash;
     }
+
+    User copy() {
+        User copy = new User(name, email, passwordHash);
+        copy.role = role;
+        return copy;
+    }
+
+    String getPasswordHash() { return passwordHash; }
+    UserRole getRole() { return role; }
+    static String normalizeEmail(String email) { return email.strip().toLowerCase(Locale.ROOT); }
 
     public Long getId() { return id; }
     public String getName() { return name; }
@@ -46,7 +73,7 @@ class User {
         if (email == null || email.isBlank()) {
             throw new IllegalArgumentException("Email is required");
         }
-        String normalized = email.strip().toLowerCase(Locale.ROOT);
+        String normalized = normalizeEmail(email);
         if (normalized.length() > 254) {
             throw new IllegalArgumentException("Email must contain at most 254 characters");
         }

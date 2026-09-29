@@ -19,6 +19,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class TaskMySqlTests extends MySqlIntegrationTest {
     @Autowired TaskApplicationService service;
     @Autowired TaskController controller;
+    @Autowired org.springframework.web.context.WebApplicationContext context;
+    private org.springframework.test.web.servlet.MockMvc mvc(long owner) {
+        return MockMvcBuilders.webAppContextSetup(context)
+                .apply(org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity())
+                .defaultRequest(post("/").with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user(
+                        br.edu.ufersa.pw.focustask.AuthenticatedMvcTest.principal(owner)))).build();
+    }
     @Autowired GlobalExceptionHandler handler;
     @org.springframework.test.context.bean.override.mockito.MockitoSpyBean TaskRepository repository;
     @Autowired PlatformTransactionManager transactionManager;
@@ -30,7 +37,7 @@ class TaskMySqlTests extends MySqlIntegrationTest {
         long otherProject = project(user("other@example.com"));
         long existingTask = task(otherProject);
 
-        var response = MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(handler).build()
+        var response = mvc(owner)
                 .perform(post("/api/v1/projects/{projectId}/tasks", urlProject)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -48,7 +55,7 @@ class TaskMySqlTests extends MySqlIntegrationTest {
         assertEquals(java.time.LocalDate.of(2026, 10, 5), created.getDueDate());
         assertEquals(TaskStatus.TODO, created.getStatus());
         assertEquals(TaskPriority.MEDIUM, created.getPriority());
-        assertEquals("http://localhost/api/v1/users/" + owner + "/tasks/" + created.getId(),
+        assertEquals("http://localhost/api/v1/tasks/" + created.getId(),
                 response.getHeader("Location"));
         Task original = repository.findById(existingTask).orElseThrow();
         assertEquals(otherProject, original.getProjectId());
@@ -58,7 +65,7 @@ class TaskMySqlTests extends MySqlIntegrationTest {
 
     @Test
     void postRejectsMissingProjectWithoutWriting() throws Exception {
-        MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(handler).build()
+        mvc(user("owner@example.com"))
                 .perform(post("/api/v1/projects/-1/tasks").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"Study\"}"))
                 .andExpect(status().isNotFound())
@@ -125,7 +132,7 @@ class TaskMySqlTests extends MySqlIntegrationTest {
     void databaseEnforcesForeignKeysAndEnumsAndAllowsOptionalValues() {
         long owner = user("owner@example.com");
         long project = project(owner);
-        TaskResponseDTO task = service.create(project, new TaskCreateDTO("Task", null, null)).task();
+        TaskResponseDTO task = service.create(owner, project, new TaskCreateDTO("Task", null, null));
 
         assertNull(task.description());
         assertNull(task.dueDate());

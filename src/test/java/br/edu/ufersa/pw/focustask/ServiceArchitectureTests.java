@@ -64,6 +64,9 @@ class ServiceArchitectureTests {
                 Class<?> repository = Class.forName(BASE + feature + "Repository");
                 context.getBeanFactory().registerSingleton(repository.getSimpleName(), mock(repository));
             }
+            context.getBeanFactory().registerSingleton("passwordEncoder", mock(org.springframework.security.crypto.password.PasswordEncoder.class));
+            context.getBeanFactory().registerSingleton("authenticationManager", mock(org.springframework.security.authentication.AuthenticationManager.class));
+            context.getBeanFactory().registerSingleton("tokenService", mock(br.edu.ufersa.pw.focustask.shared.security.TokenService.class));
             context.scan("br.edu.ufersa.pw.focustask.features");
             context.refresh();
             for (String feature : FEATURES) {
@@ -72,5 +75,24 @@ class ServiceArchitectureTests {
                 assertNotNull(context.getBean(Class.forName(BASE + feature + "InternalApi")));
             }
         }
+    }
+    @Test
+    void securityStaysOutsideDomainAndOrdinaryApplicationServices() throws Exception {
+        Path root = Path.of("src/main/java/br/edu/ufersa/pw/focustask/features");
+        try (var files = Files.walk(root)) {
+            for (Path file : files.filter(p -> p.toString().endsWith(".java")).toList()) {
+                String source = Files.readString(file);
+                String name = file.getFileName().toString();
+                if (name.equals("AuthApplicationService.java") || name.equals("UserDetailsServiceImpl.java")) continue;
+                if (!(name.endsWith("Service.java") || name.endsWith("InternalApiImpl.java")
+                        || name.endsWith("Exception.java") || source.contains("@Entity"))) continue;
+                assertFalse(source.contains("org.springframework.security"), file.toString());
+                assertFalse(source.contains("SecurityContext"), file.toString());
+                assertFalse(source.contains("shared.security"), file.toString());
+            }
+        }
+        Class<?> auth = Class.forName(BASE + "user.AuthApplicationService");
+        assertNotNull(auth.getDeclaredMethod("register", br.edu.ufersa.pw.focustask.features.user.dto.RegisterRequestDTO.class)
+                .getAnnotation(Transactional.class));
     }
 }

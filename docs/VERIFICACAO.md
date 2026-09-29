@@ -1,16 +1,9 @@
-# Verificação local — FocusTask Docker + Render
+# Verificação do deploy autenticado
 
-Base: Altaircsj/focustask, commit 35b9dfcd8b947e0e728fea1de1c20bf6be8dc668.
+A atualização integra JWT à configuração Docker/Render e mantém a main intacta.
 
-- JDK: Eclipse Temurin 21.0.12.1.
-- Compilação e testes: BUILD SUCCESS.
-- Casos contabilizados: 202; executados: 173; falhas: 0; erros: 0; pulados: 29.
-- Os 29 casos pulados exigem Docker (MySQL/PostgreSQL); este ambiente não dispõe de Docker.
-- Empacotamento do JAR executável: BUILD SUCCESS.
-- render.yaml validado contra https://render.com/schema/render.yaml.json.
-- pom.xml e YAMLs analisados; diff sem erros de whitespace.
-- Migration MySQL movida sem alteração de conteúdo.
-- Build da imagem Docker, inicialização PostgreSQL e deploy Render: pendentes.
-- Nenhuma credencial real adicionada. Código original do ZIP preservado.
+Execute `bash mvnw -B -ntp clean verify` em ambiente com Docker para validar MySQL e PostgreSQL. O workflow rejeita qualquer teste ignorado e constrói a imagem. A execução local sem Docker não substitui essa validação.
 
-O teste PostgreSQL foi escrito e compilado, mas não executado. A configuração ainda precisa passar na integração com Docker e na validação do serviço publicado. Não há login/JWT nesta alteração.
+O teste PostgreSQL verifica: V1/V2, saúde sem token e sem detalhes, 401 sem autenticação, cadastro/login reais, armazenamento BCrypt, 403 para lista administrativa com USER, CRUD com Bearer, validação 400, duplicidade 409, recurso ausente 404 e transição inválida 422.
+
+Após publicar, repetir a coleção autenticada contra a URL pública. As evidências e a execução exata de CI estão na descrição do PR.

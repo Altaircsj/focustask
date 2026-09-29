@@ -1,6 +1,10 @@
 package br.edu.ufersa.pw.focustask.shared.exception;
 
 import br.edu.ufersa.pw.focustask.features.user.EmailAlreadyExistsException;
+import br.edu.ufersa.pw.focustask.shared.security.SecurityProblemHandler;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.authentication.AuthenticationServiceException;
+import org.springframework.security.access.AccessDeniedException;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,6 +56,23 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(NegocioException.class)
     public ProblemDetail handleBusinessRule(NegocioException ex) {
         return problem(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(AuthenticationServiceException.class)
+    public ProblemDetail handleAuthenticationInfrastructure(AuthenticationServiceException ex) {
+        log.error("Authentication infrastructure failure", ex);
+        return SecurityProblemHandler.problem(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ProblemDetail> handleAuthentication(AuthenticationException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).header(HttpHeaders.WWW_AUTHENTICATE, "Bearer")
+                .body(SecurityProblemHandler.problem(HttpStatus.UNAUTHORIZED));
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ProblemDetail handleAccessDenied(AccessDeniedException ex) {
+        return SecurityProblemHandler.problem(HttpStatus.FORBIDDEN);
     }
 
     @ExceptionHandler(Exception.class)

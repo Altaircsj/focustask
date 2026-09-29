@@ -23,8 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(TaskController.class)
 @Import({TaskApplicationService.class, TaskService.class, TaskMapperImpl.class})
-class TaskControllerTests {
-    @Autowired MockMvc mvc;
+class TaskControllerTests extends br.edu.ufersa.pw.focustask.AuthenticatedMvcTest {
     @MockitoBean TaskRepository repository;
     @MockitoBean ProjectInternalApi projects;
     @MockitoBean FocusSessionInternalApi sessions;
@@ -65,7 +64,7 @@ class TaskControllerTests {
 
     @Test
     void updateAndPatchExecuteAndPreserveOptionalValues() throws Exception {
-        String path = "/api/v1/users/7/tasks/123";
+        String path = "/api/v1/tasks/123";
         Task stored = new Task(42L, "Original");
         stored.setDescription("Keep");
         when(repository.findById(123L)).thenReturn(Optional.of(stored));
@@ -98,7 +97,7 @@ class TaskControllerTests {
                                 {"title":"Study", "description":"Read the examples", "dueDate":"2026-10-05"}
                                 """))
                 .andExpect(status().isCreated())
-                .andExpect(header().string("Location", "http://localhost/api/v1/users/7/tasks/123"))
+                .andExpect(header().string("Location", "http://localhost/api/v1/tasks/123"))
                 .andExpect(jsonPath("$.id").value(123))
                 .andExpect(jsonPath("$.projectId").value(42))
                 .andExpect(jsonPath("$.title").value("Study"))
@@ -118,7 +117,7 @@ class TaskControllerTests {
                                 {"id":999,"projectId":888,"title":"Study","status":"DONE","priority":"HIGH"}
                                 """))
                 .andExpect(status().isCreated())
-                .andExpect(header().string("Location", "http://localhost/focustask/api/v1/users/7/tasks/123"))
+                .andExpect(header().string("Location", "http://localhost/focustask/api/v1/tasks/123"))
                 .andExpect(jsonPath("$.id").value(123))
                 .andExpect(jsonPath("$.projectId").value(42))
                 .andExpect(jsonPath("$.status").value("TODO"))
@@ -148,7 +147,7 @@ class TaskControllerTests {
     void oldRouteNoLongerAcceptsCreation() throws Exception {
         mvc.perform(post("/api/v1/users/7/tasks").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"Study\"}"))
-                .andExpect(status().isMethodNotAllowed());
+                .andExpect(status().isNotFound());
         verifyNoInteractions(repository, projects, sessions);
     }
 
@@ -162,14 +161,46 @@ class TaskControllerTests {
         when(repository.findById(123L)).thenReturn(Optional.of(task));
         when(repository.findAllByProjectIdIn(List.of(42L))).thenReturn(List.of(task));
         when(repository.findAllByProjectId(42L)).thenReturn(List.of(task));
-        mvc.perform(get("/api/v1/users/7/tasks")).andExpect(status().isOk())
+        mvc.perform(get("/api/v1/tasks")).andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(123));
-        mvc.perform(get("/api/v1/users/7/projects/42/tasks")).andExpect(status().isOk())
+        mvc.perform(get("/api/v1/projects/42/tasks")).andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(123));
-        mvc.perform(get("/api/v1/users/7/tasks/123")).andExpect(status().isOk())
+        mvc.perform(get("/api/v1/tasks/123")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(123));
-        mvc.perform(delete("/api/v1/users/7/tasks/123")).andExpect(status().isNoContent());
+        mvc.perform(delete("/api/v1/tasks/123")).andExpect(status().isNoContent());
         verify(sessions).desvincularDeTarefas(7L, List.of(123L));
         verify(repository).deleteById(123L);
+    }
+    @Test
+    void authenticatedAdminCannotCreateReadChangeOrDeleteAnotherUsersTask() throws Exception {
+        Task foreign = new Task(88L, "Private");
+        when(repository.findById(123L)).thenReturn(Optional.of(foreign));
+        mvc.perform(post("/api/v1/projects/88/tasks").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"Attack\"}")).andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.detail").value("Project not found"));
+        mvc.perform(get("/api/v1/tasks/123")).andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/projects/88/tasks")).andExpect(status().isNotFound());
+        mvc.perform(patch("/api/v1/tasks/123").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"Attack\"}")).andExpect(status().isNotFound());
+        mvc.perform(put("/api/v1/tasks/123").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"projectId\":42,\"title\":\"Attack\",\"status\":\"TODO\",\"priority\":\"MEDIUM\"}"))
+                .andExpect(status().isNotFound());
+        mvc.perform(delete("/api/v1/tasks/123")).andExpect(status().isNotFound());
+        assertEquals("Private", foreign.getTitle());
+        verify(repository, never()).save(any());
+        verify(repository, never()).deleteById(any());
+        verifyNoInteractions(sessions);
+    }
+
+    @Test
+    void rejectsMovingOwnedTaskToForeignProjectWithoutMutation() throws Exception {
+        Task own = new Task(42L, "Owned");
+        when(repository.findById(123L)).thenReturn(Optional.of(own));
+        when(projects.pertenceAoUsuario(7L, 42L)).thenReturn(true);
+        mvc.perform(patch("/api/v1/tasks/123").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"projectId\":88,\"title\":\"Attack\"}"))
+                .andExpect(status().isNotFound()).andExpect(jsonPath("$.detail").value("Project not found"));
+        assertEquals(42L, own.getProjectId());
+        assertEquals("Owned", own.getTitle());
     }
 }

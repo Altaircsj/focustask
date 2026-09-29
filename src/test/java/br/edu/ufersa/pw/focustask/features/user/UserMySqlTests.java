@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class UserMySqlTests extends MySqlIntegrationTest {
     @Autowired UserApplicationService service;
+    @Autowired AuthApplicationService auth;
     @org.springframework.test.context.bean.override.mockito.MockitoSpyBean UserRepository repository;
 
     @Test
@@ -35,13 +36,14 @@ class UserMySqlTests extends MySqlIntegrationTest {
 
     @Test
     void normalizesEmailAndEnforcesUniquenessAndRequiredFields() {
-        UserResponseDTO result = service.create(new UserCreateDTO("Student", "  Student@Example.COM  "));
-        assertEquals("student@example.com", result.email());
-        assertThrows(EmailAlreadyExistsException.class, () -> service.create(new UserCreateDTO("Other", "STUDENT@example.com")));
+        auth.register(new RegisterRequestDTO("Student", "  Student@Example.COM  ", "secret12"));
+        User result = repository.findByEmail("student@example.com").orElseThrow();
+        assertEquals("student@example.com", result.getEmail());
+        assertThrows(EmailAlreadyExistsException.class, () -> auth.register(new RegisterRequestDTO("Other", "STUDENT@example.com", "secret12")));
         assertThrows(DataIntegrityViolationException.class,
-                () -> jdbc.update("insert into users(name,email) values ('Other','student@example.com')"));
+                () -> jdbc.update("insert into users(name,email,password_hash) values ('Other','student@example.com','test-hash')"));
         assertThrows(DataIntegrityViolationException.class,
-                () -> jdbc.update("insert into users(name,email) values (null,'new@example.com')"));
+                () -> jdbc.update("insert into users(name,email,password_hash) values (null,'new@example.com','test-hash')"));
     }
 
     @Test

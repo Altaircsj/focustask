@@ -23,13 +23,33 @@ class CrudMySqlTests extends MySqlIntegrationTest {
     @Autowired FocusSessionController sessions;
     @Autowired GlobalExceptionHandler handler;
     private MockMvc mvc;
+    @Autowired org.springframework.web.context.WebApplicationContext context;
+    @Autowired tools.jackson.databind.json.JsonMapper json;
+    private void authenticate(long userId) {
+        mvc = MockMvcBuilders.webAppContextSetup(context)
+                .apply(org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity())
+                .defaultRequest(get("/").with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user(
+                        AuthenticatedMvcTest.principal(userId)))).build();
+    }
 
     @BeforeEach
-    void configureMvc() { mvc = MockMvcBuilders.standaloneSetup(users, projects, tasks, sessions).setControllerAdvice(handler).build(); }
+    void configureMvc() { mvc = MockMvcBuilders.webAppContextSetup(context)
+            .apply(org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity()).build(); }
 
     @Test
-    void all27RoutesExecuteAgainstRealApplicationServicesAndMysql() throws Exception {
-        String user = create("/api/v1/users", "{\"name\":\"Carol\",\"email\":\"carol@example.com\"}");
+    void crudExecutesAgainstRealApplicationServicesAndMysql() throws Exception {
+        mvc.perform(post("/api/v1/auth/register").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Carol\",\"email\":\"carol@example.com\",\"password\":\"secret12\"}"))
+                .andExpect(status().isCreated()).andExpect(content().string(""));
+        jdbc.update("update users set role='ADMIN' where email=?", "carol@example.com");
+        String login = mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"carol@example.com\",\"password\":\"secret12\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String token = json.readTree(login).get("token").asString();
+        mvc = MockMvcBuilders.webAppContextSetup(context)
+                .apply(org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity())
+                .defaultRequest(get("/").header("Authorization", "Bearer " + token)).build();
+        String user = "/api/v1/me";
         mvc.perform(get("/api/v1/users")).andExpect(jsonPath("$[0].name").value("Carol"));
         mvc.perform(get(user)).andExpect(status().isOk()).andExpect(jsonPath("$.name").value("Carol"));
         mvc.perform(put(user).contentType(MediaType.APPLICATION_JSON)
@@ -38,8 +58,8 @@ class CrudMySqlTests extends MySqlIntegrationTest {
                 .andExpect(status().isOk());
         mvc.perform(get(user)).andExpect(jsonPath("$.name").value("Patched"));
 
-        String project = create(user + "/projects", "{\"name\":\"Project\",\"description\":\"Keep\"}");
-        mvc.perform(get(user + "/projects")).andExpect(jsonPath("$[0].name").value("Project"));
+        String project = create("/api/v1/projects", "{\"name\":\"Project\",\"description\":\"Keep\"}");
+        mvc.perform(get("/api/v1/projects")).andExpect(jsonPath("$[0].name").value("Project"));
         mvc.perform(get(project)).andExpect(status().isOk());
         mvc.perform(patch(project).contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(jsonPath("$.description").value("Keep"));
@@ -49,7 +69,7 @@ class CrudMySqlTests extends MySqlIntegrationTest {
 
         long projectId = id(project);
         String task = create("/api/v1/projects/" + projectId + "/tasks", "{\"title\":\"Task\"}");
-        mvc.perform(get(user + "/tasks")).andExpect(jsonPath("$[0].id").value(id(task)));
+        mvc.perform(get("/api/v1/tasks")).andExpect(jsonPath("$[0].id").value(id(task)));
         mvc.perform(get(project + "/tasks")).andExpect(jsonPath("$[0].id").value(id(task)));
         mvc.perform(get(task)).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("TODO"));
         mvc.perform(put(task).contentType(MediaType.APPLICATION_JSON)
@@ -59,8 +79,8 @@ class CrudMySqlTests extends MySqlIntegrationTest {
                 .andExpect(status().isOk());
         mvc.perform(get(task)).andExpect(jsonPath("$.status").value("TODO")).andExpect(jsonPath("$.title").value("Edited"));
 
-        String standalone = create(user + "/focus-sessions", "{}");
-        mvc.perform(get(user + "/focus-sessions")).andExpect(jsonPath("$[0].id").value(id(standalone)));
+        String standalone = create("/api/v1/focus-sessions", "{}");
+        mvc.perform(get("/api/v1/focus-sessions")).andExpect(jsonPath("$[0].id").value(id(standalone)));
         mvc.perform(get(standalone)).andExpect(jsonPath("$.taskId").isEmpty());
         mvc.perform(put(standalone).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"taskId\":" + id(task) + ",\"status\":\"PAUSED\"}"))
@@ -86,11 +106,12 @@ class CrudMySqlTests extends MySqlIntegrationTest {
         long project = project(owner);
         long task = task(project);
         long session = session(owner, task);
-        mvc.perform(get("/api/v1/users/" + stranger + "/projects/" + project))
+        authenticate(stranger);
+        mvc.perform(get("/api/v1/projects/" + project))
                 .andExpect(status().isNotFound()).andExpect(jsonPath("$.detail").value("Project not found"));
-        mvc.perform(delete("/api/v1/users/" + stranger + "/tasks/" + task))
+        mvc.perform(delete("/api/v1/tasks/" + task))
                 .andExpect(status().isNotFound()).andExpect(jsonPath("$.detail").value("Task not found"));
-        mvc.perform(patch("/api/v1/users/" + stranger + "/focus-sessions/" + session)
+        mvc.perform(patch("/api/v1/focus-sessions/" + session)
                 .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"COMPLETED\"}"))
                 .andExpect(status().isNotFound()).andExpect(jsonPath("$.detail").value("Focus session not found"));
         assertEquals(task, jdbc.queryForObject("select task_id from focus_sessions where id=?", Long.class, session));
@@ -112,10 +133,11 @@ class CrudMySqlTests extends MySqlIntegrationTest {
     void duplicateEmailReturns409WithoutInsertingOrChangingUser() throws Exception {
         long owner = user("owner@example.com");
         long other = user("other@example.com");
-        mvc.perform(post("/api/v1/users").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"Duplicate\",\"email\":\"OWNER@example.com\"}"))
+        authenticate(other);
+        mvc.perform(post("/api/v1/auth/register").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Duplicate\",\"email\":\"OWNER@example.com\",\"password\":\"secret12\"}"))
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.detail").value("Email already registered"));
-        mvc.perform(patch("/api/v1/users/" + other).contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(patch("/api/v1/me").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"OWNER@example.com\"}"))
                 .andExpect(status().isConflict());
         assertEquals(2, jdbc.queryForObject("select count(*) from users", Integer.class));
@@ -130,7 +152,8 @@ class CrudMySqlTests extends MySqlIntegrationTest {
         long originalTask = task(project);
         long otherTask = task(project);
         long session = session(owner, originalTask);
-        String path = "/api/v1/users/" + owner + "/focus-sessions/" + session;
+        authenticate(owner);
+        String path = "/api/v1/focus-sessions/" + session;
         mvc.perform(patch(path).contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"COMPLETED\"}"))
                 .andExpect(status().isOk());
         var before = jdbc.queryForMap("select * from focus_sessions where id=?", session);
