@@ -2,6 +2,8 @@ package br.edu.ufersa.pw.focustask.features.project;
 
 import br.edu.ufersa.pw.focustask.features.project.dto.*;
 import jakarta.validation.Valid;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import br.edu.ufersa.pw.focustask.shared.security.AuthenticatedUser;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -15,44 +17,44 @@ public class ProjectController {
 
     public ProjectController(ProjectApplicationService service) { this.service = service; }
 
-    @GetMapping("/users/{userId}/projects")
-    public ResponseEntity<List<ProjectResponseDTO>> getAll(@PathVariable Long userId) {
-        return ResponseEntity.ok(service.getAll(userId));
+    @GetMapping("/projects")
+    public ResponseEntity<List<ProjectResponseDTO>> getAll(@AuthenticationPrincipal AuthenticatedUser principal) {
+        return ResponseEntity.ok(service.getAll(principal.getId()));
     }
 
-    @PostMapping("/users/{userId}/projects")
+    @PostMapping("/projects")
     public ResponseEntity<ProjectResponseDTO> create(
-            @PathVariable Long userId,
+            @AuthenticationPrincipal AuthenticatedUser principal,
             @RequestBody @Valid ProjectCreateDTO dto,
             UriComponentsBuilder uriBuilder) {
-        ProjectResponseDTO saved = service.create(userId, dto);
-        URI location = uriBuilder.path("/api/v1/users/{userId}/projects/{projectId}")
-                .buildAndExpand(userId, saved.id()).toUri();
+        ProjectResponseDTO saved = service.create(principal.getId(), dto);
+        URI location = uriBuilder.path("/api/v1/projects/{projectId}")
+                .buildAndExpand(saved.id()).toUri();
         return ResponseEntity.created(location).body(saved);
     }
 
-    @GetMapping("/users/{userId}/projects/{projectId}")
+    @GetMapping("/projects/{projectId}")
     public ResponseEntity<ProjectResponseDTO> getById(
-            @PathVariable Long userId,
+            @AuthenticationPrincipal AuthenticatedUser principal,
             @PathVariable Long projectId) {
-        return ResponseEntity.ok(service.getById(userId, projectId));
+        return ResponseEntity.ok(service.getById(principal.getId(), projectId));
     }
 
-    @PutMapping("/users/{userId}/projects/{projectId}")
-    public ResponseEntity<ProjectResponseDTO> update(@PathVariable Long userId, @PathVariable Long projectId,
+    @PutMapping("/projects/{projectId}")
+    public ResponseEntity<ProjectResponseDTO> update(@AuthenticationPrincipal AuthenticatedUser principal, @PathVariable Long projectId,
             @RequestBody @Valid ProjectUpdateDTO dto) {
-        return ResponseEntity.ok(service.update(userId, projectId, dto));
+        return ResponseEntity.ok(service.update(principal.getId(), projectId, dto));
     }
 
-    @PatchMapping("/users/{userId}/projects/{projectId}")
-    public ResponseEntity<ProjectResponseDTO> patch(@PathVariable Long userId, @PathVariable Long projectId,
+    @PatchMapping("/projects/{projectId}")
+    public ResponseEntity<ProjectResponseDTO> patch(@AuthenticationPrincipal AuthenticatedUser principal, @PathVariable Long projectId,
             @RequestBody @Valid ProjectPatchDTO dto) {
-        return ResponseEntity.ok(service.patch(userId, projectId, dto));
+        return ResponseEntity.ok(service.patch(principal.getId(), projectId, dto));
     }
 
-    @DeleteMapping("/users/{userId}/projects/{projectId}")
-    public ResponseEntity<Void> delete(@PathVariable Long userId, @PathVariable Long projectId) {
-        service.delete(userId, projectId);
+    @DeleteMapping("/projects/{projectId}")
+    public ResponseEntity<Void> delete(@AuthenticationPrincipal AuthenticatedUser principal, @PathVariable Long projectId) {
+        service.delete(principal.getId(), projectId);
         return ResponseEntity.noContent().build();
     }
 }

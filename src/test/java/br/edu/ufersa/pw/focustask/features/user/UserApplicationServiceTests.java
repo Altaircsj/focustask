@@ -20,7 +20,7 @@ class UserApplicationServiceTests {
         TaskInternalApi tasks = mock(TaskInternalApi.class);
         FocusSessionInternalApi sessions = mock(FocusSessionInternalApi.class);
         UserApplicationService service = new UserApplicationService(repository, new UserMapperImpl(), new UserService(repository), projects, tasks, sessions);
-        when(repository.findById(1L)).thenReturn(Optional.of(new User("Student", "student@example.com")));
+        when(repository.findById(1L)).thenReturn(Optional.of(new User("Student", "student@example.com", "test-hash")));
         when(projects.listarPorUsuario(1L)).thenReturn(List.of(new ProjectDTO(2L, 1L, "Project", null)));
 
         service.delete(1L);
@@ -33,21 +33,9 @@ class UserApplicationServiceTests {
     }
 
     @Test
-    void checksNormalizedEmailBeforeSaving() {
-        UserRepository repository = mock(UserRepository.class);
-        UserApplicationService service = new UserApplicationService(repository, new UserMapperImpl(), new UserService(repository), mock(ProjectInternalApi.class),
-                mock(TaskInternalApi.class), mock(FocusSessionInternalApi.class));
-        when(repository.existsByEmail("student@example.com")).thenReturn(true);
-
-        assertThrows(EmailAlreadyExistsException.class,
-                () -> service.create(new UserCreateDTO("Student", "  STUDENT@EXAMPLE.COM  ")));
-        verify(repository, never()).save(any());
-    }
-
-    @Test
     void checksCandidateBeforeMutatingManagedUserOnPutAndPatch() {
         UserRepository repository = mock(UserRepository.class);
-        User current = new User("Original", "original@example.com");
+        User current = new User("Original", "original@example.com", "test-hash");
         when(repository.findById(1L)).thenReturn(Optional.of(current));
         when(repository.existsByEmailAndIdNot("taken@example.com", 1L)).thenAnswer(call -> {
             assertEquals("Original", current.getName());
@@ -67,20 +55,13 @@ class UserApplicationServiceTests {
     }
 
     @Test
-    void createsReadsAndUpdatesThroughMapperWithoutChangingIdentity() {
+    void readsAndUpdatesThroughMapperWithoutChangingIdentity() {
         UserRepository repository = mock(UserRepository.class);
         UserApplicationService service = new UserApplicationService(repository, new UserMapperImpl(),
                 new UserService(repository), mock(ProjectInternalApi.class), mock(TaskInternalApi.class),
                 mock(FocusSessionInternalApi.class));
-        when(repository.save(any())).thenAnswer(call -> {
-            User user = call.getArgument(0);
-            org.springframework.test.util.ReflectionTestUtils.setField(user, "id", 1L);
-            return user;
-        });
-        var created = service.create(new UserCreateDTO("Student", "  Student@Example.com "));
-        assertEquals(1L, created.id());
-        assertEquals("student@example.com", created.email());
-        User stored = new User(created.name(), created.email());
+        var created = new UserResponseDTO(1L, "Student", "student@example.com");
+        User stored = new User(created.name(), created.email(), "test-hash");
         org.springframework.test.util.ReflectionTestUtils.setField(stored, "id", 1L);
         when(repository.findById(1L)).thenReturn(Optional.of(stored));
         when(repository.findAll()).thenReturn(List.of(stored));
@@ -90,6 +71,8 @@ class UserApplicationServiceTests {
         assertEquals(1L, updated.id());
         assertEquals("student@example.com", updated.email());
         assertEquals(updated, service.patch(1L, new UserPatchDTO(null, null)));
+        assertEquals("test-hash", stored.getPasswordHash());
+        assertEquals(UserRole.USER, stored.getRole());
         verify(repository).existsByEmailAndIdNot("student@example.com", 1L);
         assertEquals("User not found",
                 assertThrows(EntidadeNaoEncontradaException.class, () -> service.getById(99L)).getMessage());

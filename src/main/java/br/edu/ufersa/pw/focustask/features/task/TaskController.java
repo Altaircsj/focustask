@@ -2,6 +2,8 @@ package br.edu.ufersa.pw.focustask.features.task;
 
 import br.edu.ufersa.pw.focustask.features.task.dto.*;
 import jakarta.validation.Valid;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import br.edu.ufersa.pw.focustask.shared.security.AuthenticatedUser;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -15,48 +17,49 @@ public class TaskController {
 
     public TaskController(TaskApplicationService service) { this.service = service; }
 
-    @GetMapping("/users/{userId}/tasks")
-    public ResponseEntity<List<TaskResponseDTO>> getAll(@PathVariable Long userId) {
-        return ResponseEntity.ok(service.getAll(userId));
+    @GetMapping("/tasks")
+    public ResponseEntity<List<TaskResponseDTO>> getAll(@AuthenticationPrincipal AuthenticatedUser principal) {
+        return ResponseEntity.ok(service.getAll(principal.getId()));
     }
 
     @PostMapping("/projects/{projectId}/tasks")
     public ResponseEntity<TaskResponseDTO> create(
+            @AuthenticationPrincipal AuthenticatedUser principal,
             @PathVariable Long projectId,
             @RequestBody @Valid TaskCreateDTO dto,
             UriComponentsBuilder uriBuilder) {
-        TaskCreationResult created = service.create(projectId, dto);
-        URI location = uriBuilder.path("/api/v1/users/{userId}/tasks/{taskId}")
-                .buildAndExpand(created.userId(), created.task().id()).toUri();
-        return ResponseEntity.created(location).body(created.task());
+        TaskResponseDTO created = service.create(principal.getId(), projectId, dto);
+        URI location = uriBuilder.path("/api/v1/tasks/{taskId}")
+                .buildAndExpand(created.id()).toUri();
+        return ResponseEntity.created(location).body(created);
     }
 
-    @GetMapping("/users/{userId}/tasks/{taskId}")
-    public ResponseEntity<TaskResponseDTO> getById(@PathVariable Long userId, @PathVariable Long taskId) {
-        return ResponseEntity.ok(service.getById(userId, taskId));
+    @GetMapping("/tasks/{taskId}")
+    public ResponseEntity<TaskResponseDTO> getById(@AuthenticationPrincipal AuthenticatedUser principal, @PathVariable Long taskId) {
+        return ResponseEntity.ok(service.getById(principal.getId(), taskId));
     }
 
-    @PutMapping("/users/{userId}/tasks/{taskId}")
-    public ResponseEntity<TaskResponseDTO> update(@PathVariable Long userId, @PathVariable Long taskId,
+    @PutMapping("/tasks/{taskId}")
+    public ResponseEntity<TaskResponseDTO> update(@AuthenticationPrincipal AuthenticatedUser principal, @PathVariable Long taskId,
             @RequestBody @Valid TaskUpdateDTO dto) {
-        return ResponseEntity.ok(service.update(userId, taskId, dto));
+        return ResponseEntity.ok(service.update(principal.getId(), taskId, dto));
     }
 
-    @PatchMapping("/users/{userId}/tasks/{taskId}")
-    public ResponseEntity<TaskResponseDTO> patch(@PathVariable Long userId, @PathVariable Long taskId,
+    @PatchMapping("/tasks/{taskId}")
+    public ResponseEntity<TaskResponseDTO> patch(@AuthenticationPrincipal AuthenticatedUser principal, @PathVariable Long taskId,
             @RequestBody @Valid TaskPatchDTO dto) {
-        return ResponseEntity.ok(service.patch(userId, taskId, dto));
+        return ResponseEntity.ok(service.patch(principal.getId(), taskId, dto));
     }
 
-    @DeleteMapping("/users/{userId}/tasks/{taskId}")
-    public ResponseEntity<Void> delete(@PathVariable Long userId, @PathVariable Long taskId) {
-        service.delete(userId, taskId);
+    @DeleteMapping("/tasks/{taskId}")
+    public ResponseEntity<Void> delete(@AuthenticationPrincipal AuthenticatedUser principal, @PathVariable Long taskId) {
+        service.delete(principal.getId(), taskId);
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/users/{userId}/projects/{projectId}/tasks")
-    public ResponseEntity<List<TaskResponseDTO>> getByProject(@PathVariable Long userId,
+    @GetMapping("/projects/{projectId}/tasks")
+    public ResponseEntity<List<TaskResponseDTO>> getByProject(@AuthenticationPrincipal AuthenticatedUser principal,
             @PathVariable Long projectId) {
-        return ResponseEntity.ok(service.getByProject(userId, projectId));
+        return ResponseEntity.ok(service.getByProject(principal.getId(), projectId));
     }
 }

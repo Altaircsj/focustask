@@ -9,8 +9,8 @@ class UserService {
 
     UserService(UserRepository repository) { this.repository = repository; }
 
-    public void validarCriacao(User user) {
-        if (repository.existsByEmail(user.getEmail())) throw new EmailAlreadyExistsException();
+    public void validarCriacao(String normalizedEmail) {
+        if (repository.existsByEmail(normalizedEmail)) throw new EmailAlreadyExistsException();
     }
 
     public void validarAtualizacao(User candidate, Long userId) {

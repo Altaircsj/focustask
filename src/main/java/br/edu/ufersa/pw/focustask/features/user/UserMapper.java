@@ -9,11 +9,6 @@ interface UserMapper {
     UserResponseDTO toResponse(User entity);
     List<UserResponseDTO> toResponseList(List<User> entities);
 
-    default User toEntity(UserCreateDTO dto) {
-        if (dto == null) return null;
-        return new User(dto.name(), dto.email());
-    }
-
     @BeanMapping(ignoreByDefault = true)
     @Mapping(target = "name", source = "name")
     @Mapping(target = "email", source = "email")

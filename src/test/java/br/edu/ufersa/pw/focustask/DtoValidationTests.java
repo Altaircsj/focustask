@@ -40,7 +40,7 @@ class DtoValidationTests {
     static Stream<Object> validInputs() {
         LocalDate past = LocalDate.of(2000, 1, 1);
         return Stream.of(
-                new UserCreateDTO("A", "a@example.com"),
+                new RegisterRequestDTO("A", "a@example.com", "secret12"),
                 new UserUpdateDTO("N".repeat(255), "a@example.com"),
                 new UserPatchDTO(null, null), new UserPatchDTO(" A\n", "new@example.com"),
                 new ProjectCreateDTO("A", null), new ProjectUpdateDTO("N".repeat(255), null),
@@ -65,11 +65,11 @@ class DtoValidationTests {
 
     static Stream<Arguments> invalidInputs() {
         return Stream.of(
-                Arguments.of(new UserCreateDTO(null, "a@example.com"), "name"),
-                Arguments.of(new UserCreateDTO(" ", "a@example.com"), "name"),
-                Arguments.of(new UserCreateDTO("N".repeat(256), "a@example.com"), "name"),
-                Arguments.of(new UserCreateDTO("A", null), "email"),
-                Arguments.of(new UserCreateDTO("A", "bad-email"), "email"),
+                Arguments.of(new RegisterRequestDTO(null, "a@example.com", "secret12"), "name"),
+                Arguments.of(new RegisterRequestDTO(" ", "a@example.com", "secret12"), "name"),
+                Arguments.of(new RegisterRequestDTO("N".repeat(256), "a@example.com", "secret12"), "name"),
+                Arguments.of(new RegisterRequestDTO("A", null, "secret12"), "email"),
+                Arguments.of(new RegisterRequestDTO("A", "bad-email", "secret12"), "email"),
                 Arguments.of(new UserUpdateDTO("A", "a".repeat(255) + "@example.com"), "email"),
                 Arguments.of(new UserUpdateDTO(null, "a@example.com"), "name"),
                 Arguments.of(new UserPatchDTO("", null), "name"),

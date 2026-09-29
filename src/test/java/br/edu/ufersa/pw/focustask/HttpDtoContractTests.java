@@ -1,6 +1,7 @@
 package br.edu.ufersa.pw.focustask;
 
 import br.edu.ufersa.pw.focustask.features.user.UserController;
+import br.edu.ufersa.pw.focustask.features.user.AuthController;
 import br.edu.ufersa.pw.focustask.features.project.ProjectController;
 import br.edu.ufersa.pw.focustask.features.task.TaskController;
 import br.edu.ufersa.pw.focustask.features.focusSession.FocusSessionController;
@@ -17,11 +18,11 @@ import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class HttpDtoContractTests {
-    private static final List<Class<?>> CONTROLLERS = List.of(UserController.class,
+    private static final List<Class<?>> CONTROLLERS = List.of(AuthController.class, UserController.class,
             ProjectController.class, TaskController.class, FocusSessionController.class);
 
     @Test
-    void all27EndpointsExposeOnlyHttpDtosAndAll12BodiesUseValid() {
+    void all28EndpointsExposeOnlyHttpDtosAndAll13BodiesUseValid() {
         int endpoints = 0;
         int bodies = 0;
         for (Class<?> controller : CONTROLLERS) {
@@ -40,8 +41,8 @@ class HttpDtoContractTests {
                 }
             }
         }
-        assertEquals(27, endpoints);
-        assertEquals(12, bodies);
+        assertEquals(28, endpoints);
+        assertEquals(13, bodies);
     }
 
     private static void assertDtoPayload(Type type) {
