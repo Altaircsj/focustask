@@ -13,7 +13,45 @@ persistência e as transações. Controllers dependem somente da aplicação loc
 A API possui 28 endpoints, autenticação JWT stateless e RBAC mínimo. GET, PUT e
 PATCH retornam 200 com DTOs; criações de recursos retornam 201 com corpo e Location;
 DELETE retorna 204 sem corpo. Registro retorna 201 vazio, e login retorna 200 com token.
-As URLs antigas com `/users/{userId}` foram removidas, sem aliases. Não há frontend React.
+As URLs antigas com `/users/{userId}` foram removidas, sem aliases. O frontend React
+em `frontend/` integra cadastro, login, recuperação da sessão e um painel com os
+dados reais de `/me`. As demais páginas internas continuam como placeholders protegidos.
+
+### Iniciar backend e frontend
+
+Configure o `.env` da raiz a partir de `.env.example`, preservando suas credenciais:
+`FOCUSTASK_DB_URL`, `FOCUSTASK_DB_USERNAME`, `FOCUSTASK_DB_PASSWORD`,
+`FOCUSTASK_JWT_SECRET` e `FOCUSTASK_CORS_ALLOWED_ORIGINS=http://localhost:5173`.
+O perfil `dev` importa esse arquivo quando o backend é iniciado na raiz.
+
+No PowerShell, use Java 21 e inicie o backend na raiz:
+
+```powershell
+$env:JAVA_HOME = 'C:\Users\Carol\.jdks\ms-21.0.9'
+$env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
+.\mvnw.cmd spring-boot:run '-Dspring-boot.run.profiles=dev'
+```
+
+Em outro terminal:
+
+```powershell
+cd frontend
+# Na primeira configuração, se .env ainda não existir:
+if (!(Test-Path .env)) { Copy-Item .env.example .env }
+npm ci
+npm run dev
+```
+
+Se `frontend/.env` já existir, edite apenas `VITE_API_URL`, sem sobrescrever as
+demais configurações. Use `http://localhost:8080/api/v1` para o backend local e abra
+`http://localhost:5173`. Não é necessário proxy do Vite.
+
+Para backend hospedado, configure `VITE_API_URL=https://seu-back.onrender.com/api/v1`
+e permita a origem do frontend em `FOCUSTASK_CORS_ALLOWED_ORIGINS` no backend.
+Reinicie o Vite após alterar arquivos `.env`; a URL precisa estar definida antes
+do build publicado. Arquivos de modo, como `.env.production`, têm prioridade
+sobre `.env`; veja [o guia do frontend](frontend/README.md) e
+[a verificação da integração](docs/AUTH_INTEGRACAO.md).
 
 ### Responsabilidades
 

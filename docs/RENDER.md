@@ -13,6 +13,14 @@ Java 21, PostgreSQL 18, perfil prod. Desenvolvimento local usa MySQL com perfil 
 
 O segredo não tem valor padrão: sem ele a aplicação falha ao iniciar. Alterá-lo invalida os tokens existentes.
 
+Para usar o frontend React, configure também `FOCUSTASK_CORS_ALLOWED_ORIGINS`
+com a origem pública do frontend, por exemplo `https://seu-frontend.example.com`.
+Use uma lista separada por vírgula para múltiplas origens, sem caminhos, barras
+finais ou curingas. O `render.yaml` solicita essa variável para novos serviços.
+No frontend, defina `VITE_API_URL=https://seu-back.onrender.com/api/v1` antes do
+build. Confira `.env.production`, que tem prioridade sobre `.env`. Reinicie o
+Vite após alterações locais. Veja [o guia do frontend](../frontend/README.md).
+
 ## Migrações
 
 As migrations ficam em `db/migration/mysql` e `db/migration/postgresql`; cada perfil executa apenas seu diretório. V1 preserva o schema já implantado; V2 inclui password_hash e role. O conteúdo da V2 MySQL foi preservado da atualização original.

@@ -1,0 +1,17 @@
+.form-field { margin: 20px 0; }
+.form-field label { display: block; color: var(--text-h); margin-bottom: 8px; }
+.form-field input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+  font: inherit;
+}
+.form-field input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.auth-card .field-error, .form-hint { font-size: 0.88rem; }

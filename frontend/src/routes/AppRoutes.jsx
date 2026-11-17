@@ -1,80 +1,31 @@
-import { Navigate, Route, Routes } from 'react-router'
+import { Link, Navigate, Route, Routes } from 'react-router'
+import LoginPage from '../features/auth/pages/LoginPage'
+import RegisterPage from '../features/auth/pages/RegisterPage'
+import { useAuth } from '../features/auth/useAuth'
+import DashboardPage from '../features/dashboard/pages/DashboardPage'
+import ProtectedRoute from './ProtectedRoute'
 
-import LoginPage from '../features/auth/LoginPage'
-
-// Substitua cada uso por sua página real conforme for implementando.
 function PlaceholderPage({ titulo }) {
-  return (
-    <main>
-      <h1>{titulo}</h1>
-    </main>
-  )
+  return <main className="auth-card"><h1>{titulo}</h1><p>Esta página será implementada em uma próxima etapa.</p><Link to="/dashboard">Voltar ao painel</Link></main>
 }
 
-//pra quando houver usuario logado
-/*
-<Route
-  path="/"
-  element={
-    usuarioLogado
-      ? <DashboardPage />
-      : <Navigate to="/login" replace />
-  }
-/>
- */
-
-
 export default function AppRoutes() {
+  const { user } = useAuth()
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/login" replace />} />
-
+      <Route path="/" element={<Navigate to={user ? '/dashboard' : '/login'} replace />} />
       <Route path="/login" element={<LoginPage />} />
-
-      <Route
-        path="/register"
-        element={<PlaceholderPage titulo="Criar conta" />}
-      />
-
-      <Route
-        path="/dashboard"
-        element={<PlaceholderPage titulo="Painel" />}
-      />
-
-      <Route
-        path="/projects"
-        element={<PlaceholderPage titulo="Projetos" />}
-      />
-
-      <Route
-        path="/projects/:projectId"
-        element={<PlaceholderPage titulo="Detalhes do projeto" />}
-      />
-
-      <Route
-        path="/tasks"
-        element={<PlaceholderPage titulo="Tarefas" />}
-      />
-
-      <Route
-        path="/tasks/:taskId"
-        element={<PlaceholderPage titulo="Detalhes da tarefa" />}
-      />
-
-      <Route
-        path="/focus-sessions"
-        element={<PlaceholderPage titulo="Sessões de foco" />}
-      />
-
-      <Route
-        path="/profile"
-        element={<PlaceholderPage titulo="Perfil" />}
-      />
-
-      <Route
-        path="*"
-        element={<PlaceholderPage titulo="Página não encontrada" />}
-      />
+      <Route path="/register" element={<RegisterPage />} />
+      <Route element={<ProtectedRoute />}>
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/projects" element={<PlaceholderPage titulo="Projetos" />} />
+        <Route path="/projects/:projectId" element={<PlaceholderPage titulo="Detalhes do projeto" />} />
+        <Route path="/tasks" element={<PlaceholderPage titulo="Tarefas" />} />
+        <Route path="/tasks/:taskId" element={<PlaceholderPage titulo="Detalhes da tarefa" />} />
+        <Route path="/focus-sessions" element={<PlaceholderPage titulo="Sessões de foco" />} />
+        <Route path="/profile" element={<PlaceholderPage titulo="Perfil" />} />
+      </Route>
+      <Route path="*" element={<main className="auth-card"><h1>Página não encontrada</h1><Link to="/">Ir ao início</Link></main>} />
     </Routes>
   )
 }

@@ -1,16 +1,136 @@
-# React + Vite
+# FocusTask — frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React, JavaScript, Vite e React Router. Cadastro e login usam a API real; o painel
+exibe nome e email retornados por `/me`. Projetos, tarefas, sessões de foco e perfil
+estão protegidos, mas seus CRUDs ainda não foram implementados.
 
-Currently, two official plugins are available:
+## Ambiente local
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Use Node compatível com o Vite instalado (verificado com Node 22.14.0) e Java 21
+no backend. Na raiz do projeto, mantenha o `.env` com suas configurações MySQL e
+JWT, seguindo o `.env.example` da raiz. Esse arquivo pertence exclusivamente ao
+backend; não copie suas credenciais para o frontend.
 
-## React Compiler
+No PowerShell, na raiz:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```powershell
+$env:JAVA_HOME = 'C:\Users\Carol\.jdks\ms-21.0.9'
+$env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
+.\mvnw.cmd spring-boot:run '-Dspring-boot.run.profiles=dev'
+```
 
-## Expanding the Oxlint configuration
+Em outro terminal, na pasta `frontend`:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+```powershell
+if (!(Test-Path .env)) { Copy-Item .env.example .env }
+npm ci
+npm run dev
+```
+
+O `frontend/.env` deve conter:
+
+```dotenv
+VITE_API_URL=http://localhost:8080/api/v1
+```
+
+Abra `http://localhost:5173`. As chamadas são diretas à API, sem proxy do Vite.
+A URL base precisa ser HTTP(S), terminar em `/api/v1` e não conter parâmetros ou
+credenciais. O cliente remove barras finais. Configuração ausente ou inválida
+produz uma mensagem na tela quando houver tentativa de acesso à API.
+
+No backend, `FOCUSTASK_CORS_ALLOWED_ORIGINS` aceita origens explícitas separadas
+por vírgula, por exemplo:
+
+```dotenv
+FOCUSTASK_CORS_ALLOWED_ORIGINS=http://localhost:5173,https://seu-frontend.example.com
+```
+
+Origens não têm caminho ou barra final. O padrão do perfil `dev` é
+`http://localhost:5173`; `127.0.0.1:5173` ou outra porta exige adicionar a origem
+correspondente. No perfil `prod`, configure a lista no ambiente do serviço.
+CORS está integrado ao Spring Security antes do filtro JWT e aceita
+`Content-Type`, `Authorization`, GET, POST, PUT, PATCH, DELETE e OPTIONS.
+Não usa cookies nem credenciais CORS. Docker Compose encaminha essa configuração.
+
+## Backend hospedado e build
+
+Configure no ambiente do frontend:
+
+```dotenv
+VITE_API_URL=https://seu-back.onrender.com/api/v1
+```
+
+Configure a origem pública do frontend em `FOCUSTASK_CORS_ALLOWED_ORIGINS` no
+backend. Mantenha credenciais do banco e `FOCUSTASK_JWT_SECRET` apenas no backend.
+Todas as variáveis `VITE_` são públicas e entram no código enviado ao navegador.
+
+Reinicie o servidor Vite após alterar `.env`. Para publicação, configure a URL
+**antes** de `npm run build`: o valor é incorporado ao build e não muda ao alterar
+variáveis apenas no servidor que hospeda os arquivos estáticos. Com BrowserRouter,
+configure o host estático para retornar `index.html` nas rotas do aplicativo.
+
+Os arquivos existentes `.env.development`, `.env.production` e `.env.remoto`
+foram preservados. Arquivos específicos de modo têm prioridade sobre `.env`;
+`npm run build` usa o modo `production`. Atualmente `.env.production` aponta para
+o backend local: ajuste-o para publicar, ou use uma variável de ambiente com
+prioridade maior. Exemplo PowerShell na pasta `frontend`:
+
+```powershell
+$env:VITE_API_URL = 'https://seu-back.onrender.com/api/v1'
+npm run build
+Remove-Item Env:VITE_API_URL
+```
+
+Para usar o arquivo `.env.remoto` existente durante desenvolvimento:
+
+```powershell
+node node_modules/vite/bin/vite.js --mode remoto
+```
+
+Esse comando usa o endereço já presente nesse arquivo; ele não é alterado por
+este trabalho. Não houve deploy ou teste do serviço remoto.
+
+## Sessão e organização
+
+| Arquivo | Responsabilidade |
+|---|---|
+| `src/api/client.js` | URL, fetch, JSON, Bearer, respostas vazias, ProblemDetail e eventos 401 |
+| `src/features/auth/authService.js` | Cadastro, login e consulta a `/me` |
+| `src/features/auth/authSession.js` | Recuperação, token, logout e proteção contra respostas atrasadas |
+| `src/features/auth/AuthContext.jsx` | Provedor React e carregamento/erro da recuperação |
+| `src/features/auth/useAuth.js` | Acesso ao contexto |
+| `src/features/auth/pages/LoginPage.jsx`, `src/features/auth/pages/RegisterPage.jsx` | Formulários controlados e mensagens |
+| `src/features/auth/components/AuthField.jsx` | Campo de formulário com rótulo e mensagem de erro |
+| `src/features/auth/auth.css` | Estilos específicos dos formulários de autenticação |
+| `src/features/auth/validation.js` | Limites dos DTOs, incluindo 72 bytes UTF-8 |
+| `src/routes/ProtectedRoute.jsx` | Proteção das páginas internas |
+| `src/features/dashboard/pages/DashboardPage.jsx` | Dados reais e botão Sair |
+| `src/features/dashboard/dashboard.css` | Estilos específicos do painel |
+| `src/layouts/components/SideBar.jsx` | Arquivo existente reservado ao menu lateral, ainda sem implementação |
+
+O token fica no `sessionStorage` da aba, na chave `focustask.token`. O usuário
+fica em memória. Ao iniciar, `useEffect` verifica `/me` antes de liberar as rotas.
+O login só armazena o token depois dessa verificação. O JWT dura 15 minutos;
+qualquer 401 autenticado limpa a sessão e pede novo login. Não há refresh token
+ou logout no servidor; Sair limpa a sessão local. Uma requisição que ultrapassar
+15 segundos é tratada como indisponibilidade, sem apagar o token salvo.
+
+Falhas de conexão e respostas diferentes de 401 durante a recuperação preservam
+o token e exibem Tentar novamente. Os efeitos cancelam requisições e invalidam
+respostas antigas no logout/desmonte, inclusive no StrictMode. Um 401 atrasado
+com token de sessão anterior não remove um token novo.
+
+## Verificação
+
+```powershell
+npm test
+npm run lint
+npm run build
+```
+
+Os testes usam `node:test`, sem novas dependências. Cobrem respostas vazias,
+ProblemDetail, headers, conexão, validação, recuperação, logout, 401 e concorrência.
+Na raiz, execute `.\mvnw.cmd test` com Java 21. Testes de integração com
+Testcontainers exigem Docker e usam bancos isolados. Não direcione esses testes
+ao banco local existente. Os testes do frontend não substituem os testes no
+navegador; veja os resultados em [AUTH_INTEGRACAO.md](../docs/AUTH_INTEGRACAO.md).

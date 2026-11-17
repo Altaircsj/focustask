@@ -182,3 +182,32 @@
     border-right-color: var(--border);
   }
 }
+.auth-card {
+  width: min(100%, 520px);
+  margin: 48px auto;
+  padding: 28px;
+  box-sizing: border-box;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.auth-card h1 { font-size: 32px; line-height: 1.2; margin: 0 0 24px; }
+.auth-card p { margin: 16px 0; }
+.auth-card a { color: var(--accent); }
+.auth-card button:focus-visible, .auth-card a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.auth-card button {
+  padding: 12px 20px;
+  margin: 12px 12px 12px 0;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--accent-bg);
+  color: var(--text-h);
+  font: inherit;
+  cursor: pointer;
+}
+.auth-card button:disabled { opacity: 0.6; cursor: wait; }
+.auth-card button.secondary { background: transparent; border-color: var(--border); }
+.auth-card [role="alert"], .auth-card .field-error { color: var(--text-h); border-left: 3px solid var(--accent); padding-left: 10px; }

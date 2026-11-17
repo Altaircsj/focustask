@@ -30,8 +30,48 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest({AuthController.class, UserController.class})
 @Import({SecurityProblemHandler.class, SecurityConfig.class, TokenService.class, UserDetailsServiceImpl.class, AuthApplicationService.class,
         UserService.class, UserApplicationService.class, UserMapperImpl.class, AuthSecurityTests.TimeConfig.class})
-@TestPropertySource(properties = "api.security.token.secret=auth-test-only-secret-with-at-least-32-bytes")
+@TestPropertySource(properties = {
+        "api.security.token.secret=auth-test-only-secret-with-at-least-32-bytes",
+        "app.cors.allowed-origins=http://localhost:5173, https://frontend.example.com"})
 class AuthSecurityTests {
+    @ParameterizedTest
+    @ValueSource(strings = {"http://localhost:5173", "https://frontend.example.com"})
+    void corsPreflightRunsBeforeJwtAuthentication(String origin) throws Exception {
+        for (String method : List.of("GET", "POST", "PUT", "PATCH", "DELETE")) {
+            mvc.perform(options("/api/v1/me").header("Origin", origin)
+                            .header("Access-Control-Request-Method", method)
+                            .header("Access-Control-Request-Headers", "authorization,content-type")
+                            .header("Authorization", "Bearer invalid"))
+                    .andExpect(status().isOk())
+                    .andExpect(header().string("Access-Control-Allow-Origin", origin))
+                    .andExpect(header().string("Access-Control-Allow-Headers", "authorization, content-type"))
+                    .andExpect(header().doesNotExist("Access-Control-Allow-Credentials"));
+        }
+    }
+
+    @Test void corsRejectsUnknownOriginsMethodsAndHeaders() throws Exception {
+        mvc.perform(options("/api/v1/me").header("Origin", "https://unknown.example.com")
+                        .header("Access-Control-Request-Method", "GET"))
+                .andExpect(status().isForbidden()).andExpect(header().doesNotExist("Access-Control-Allow-Origin"));
+        mvc.perform(options("/api/v1/me").header("Origin", "http://localhost:5173")
+                        .header("Access-Control-Request-Method", "TRACE"))
+                .andExpect(status().isForbidden());
+        mvc.perform(options("/api/v1/me").header("Origin", "http://localhost:5173")
+                        .header("Access-Control-Request-Method", "GET")
+                        .header("Access-Control-Request-Headers", "X-Untrusted"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test void corsHeadersAreIncludedOnAuthenticationErrorsAndSuccess() throws Exception {
+        mvc.perform(get("/api/v1/me").header("Origin", "http://localhost:5173"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"));
+        mvc.perform(get("/api/v1/me").header("Origin", "http://localhost:5173")
+                        .header("Authorization", "Bearer " + token()))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"));
+    }
+
     @TestConfiguration static class TimeConfig { @Bean Clock clock() { return Clock.systemUTC(); } }
     @Autowired MockMvc mvc;
     @Autowired PasswordEncoder encoder;

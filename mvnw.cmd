@@ -88,12 +88,11 @@ if (-not (Test-Path -Path $MAVEN_M2_PATH)) {
     New-Item -Path $MAVEN_M2_PATH -ItemType Directory | Out-Null
 }
 
-$MAVEN_WRAPPER_DISTS = $null
-if ((Get-Item $MAVEN_M2_PATH).Target[0] -eq $null) {
-  $MAVEN_WRAPPER_DISTS = "$MAVEN_M2_PATH/wrapper/dists"
-} else {
-  $MAVEN_WRAPPER_DISTS = (Get-Item $MAVEN_M2_PATH).Target[0] + "/wrapper/dists"
-}
+# Target can be null (or a string rather than an array) on a regular directory.
+$mavenM2Item = Get-Item -LiteralPath $MAVEN_M2_PATH
+$mavenM2Target = @($mavenM2Item.Target) | Select-Object -First 1
+$mavenM2ResolvedPath = if ($mavenM2Target) { $mavenM2Target } else { $mavenM2Item.FullName }
+$MAVEN_WRAPPER_DISTS = Join-Path $mavenM2ResolvedPath "wrapper/dists"
 
 $MAVEN_HOME_PARENT = "$MAVEN_WRAPPER_DISTS/$distributionUrlNameMain"
 $MAVEN_HOME_NAME = ([System.Security.Cryptography.SHA256]::Create().ComputeHash([byte[]][char[]]$distributionUrl) | ForEach-Object {$_.ToString("x2")}) -join ''
