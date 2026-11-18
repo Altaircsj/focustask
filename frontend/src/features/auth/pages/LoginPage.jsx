@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, Navigate, useLocation, useNavigate } from 'react-router'
+import { Link, Navigate, useLocation } from 'react-router'
 import { useAuth } from '../useAuth'
 import AuthField from '../components/AuthField'
 import { authErrorMessage, validateAuth } from '../validation'
@@ -14,8 +14,8 @@ export default function LoginPage() {
   const busy = useRef(false)
   const mounted = useRef(false)
   const { user, login, notice, cancelPending } = useAuth()
-  const navigate = useNavigate()
   const location = useLocation()
+
   useEffect(() => {
     mounted.current = true
     return () => { mounted.current = false; cancelPending() }
@@ -33,7 +33,7 @@ export default function LoginPage() {
     busy.current = true
     setSubmitting(true)
     try {
-      if (await login(credentials) && mounted.current) navigate('/dashboard', { replace: true })
+      await login(credentials)
     } catch (error) {
       if (mounted.current) { setMessage(authErrorMessage(error)); setErrors(error.errors || {}) }
     } finally {
@@ -41,6 +41,7 @@ export default function LoginPage() {
       if (mounted.current) setSubmitting(false)
     }
   }
+  
   return (
     <main className="auth-card">
       <h1>Entrar no FocusTask</h1>

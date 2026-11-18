@@ -96,14 +96,13 @@ este trabalho. Não houve deploy ou teste do serviço remoto.
 |---|---|
 | `src/api/client.js` | URL, fetch, JSON, Bearer, respostas vazias, ProblemDetail e eventos 401 |
 | `src/features/auth/authService.js` | Cadastro, login e consulta a `/me` |
-| `src/features/auth/authSession.js` | Recuperação, token, logout e proteção contra respostas atrasadas |
-| `src/features/auth/AuthContext.jsx` | Provedor React e carregamento/erro da recuperação |
+| `src/features/auth/AuthContext.jsx` | Estado da sessão, login, recuperação, logout e tela de nova tentativa |
 | `src/features/auth/useAuth.js` | Acesso ao contexto |
 | `src/features/auth/pages/LoginPage.jsx`, `src/features/auth/pages/RegisterPage.jsx` | Formulários controlados e mensagens |
 | `src/features/auth/components/AuthField.jsx` | Campo de formulário com rótulo e mensagem de erro |
 | `src/features/auth/auth.css` | Estilos específicos dos formulários de autenticação |
 | `src/features/auth/validation.js` | Limites dos DTOs, incluindo 72 bytes UTF-8 |
-| `src/routes/ProtectedRoute.jsx` | Proteção das páginas internas |
+| `src/routes/AppRoutes.jsx` | Rotas públicas e grupo de páginas que exigem usuário autenticado |
 | `src/features/dashboard/pages/DashboardPage.jsx` | Dados reais e botão Sair |
 | `src/features/dashboard/dashboard.css` | Estilos específicos do painel |
 | `src/layouts/components/SideBar.jsx` | Arquivo existente reservado ao menu lateral, ainda sem implementação |
@@ -128,7 +127,9 @@ npm run lint
 npm run build
 ```
 
-Os testes usam `node:test`, sem novas dependências. Cobrem respostas vazias,
+Os testes usam `node:test`. Os de sessão montam o provedor e as rotas com React DOM e jsdom.
+O [guia de estudo](../estudar-depois.md) compara essa organização com a anterior.
+Os testes cobrem respostas vazias,
 ProblemDetail, headers, conexão, validação, recuperação, logout, 401 e concorrência.
 Na raiz, execute `.\mvnw.cmd test` com Java 21. Testes de integração com
 Testcontainers exigem Docker e usam bancos isolados. Não direcione esses testes

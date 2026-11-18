@@ -1,128 +1,170 @@
-import { test } from 'node:test'
+import { after, afterEach, before, beforeEach, test } from 'node:test'
 import assert from 'node:assert/strict'
-import { createAuthSession } from '../src/features/auth/authSession.js'
-import { ApiError } from '../src/api/client.js'
+import { JSDOM } from 'jsdom'
+import { createServer } from 'vite'
+import { createElement as h, StrictMode, act, useEffect } from 'react'
+import { createRoot } from 'react-dom/client'
+import { BrowserRouter } from 'react-router'
 
-const user = { id: 1, name: 'Conta de teste', email: 'test@example.com' }
-function storageWith(token = null) {
-  return { get: () => token, set: (value) => { token = value }, remove: () => { token = null } }
+const user = { id: 1, name: 'Conta de teste', email: 'teste@example.com' }
+const tokenKey = 'focustask.token'
+let vite, dom, root, AuthProvider, AppRoutes, useAuth, api, auth
+
+before(async () => {
+  vite = await createServer({
+    envDir: false,
+    configFile: false,
+    define: { 'import.meta.env.VITE_API_URL': JSON.stringify('http://api.test/api/v1') },
+    oxc: { jsx: { runtime: 'automatic' } },
+    server: { middlewareMode: true, hmr: false, watch: null },
+  })
+  AuthProvider = (await vite.ssrLoadModule('/src/features/auth/AuthContext.jsx')).AuthProvider
+  useAuth = (await vite.ssrLoadModule('/src/features/auth/useAuth.js')).useAuth
+  api = (await vite.ssrLoadModule('/src/api/client.js')).api
+  AppRoutes = (await vite.ssrLoadModule('/src/routes/AppRoutes.jsx')).default
+})
+after(async () => { await vite.close() })
+
+beforeEach((t) => {
+  dom = new JSDOM('<div id="root"></div>', { url: 'http://frontend.test/dashboard' })
+  for (const key of ['window', 'document', 'sessionStorage']) {
+    globalThis[key] = dom.window[key]
+  }
+  globalThis.IS_REACT_ACT_ENVIRONMENT = true
+  root = createRoot(document.querySelector('#root'))
+  t.mock.method(globalThis, 'fetch', () => { throw new Error('Requisição inesperada') })
+})
+afterEach(async () => {
+  await act(() => root.unmount())
+  dom.window.close()
+  for (const key of ['window', 'document', 'sessionStorage', 'IS_REACT_ACT_ENVIRONMENT']) delete globalThis[key]
+})
+
+function Pages() {
+  const session = useAuth()
+  useEffect(() => { auth = session }, [session])
+  return h(AppRoutes)
 }
+
+async function openApp() {
+  await act(() => root.render(h(StrictMode, null, h(BrowserRouter, null, h(AuthProvider, null, h(Pages))))))
+}
+
 function deferred() {
-  let resolve, reject
-  const promise = new Promise((yes, no) => { resolve = yes; reject = no })
-  return { promise, resolve, reject }
+  return Promise.withResolvers()
 }
 
-test('starts checking, then becomes anonymous without requesting /me when there is no token', async () => {
-  const session = createAuthSession({ storage: storageWith(), service: { me: () => assert.fail('Unexpected /me') } })
-  assert.equal(session.getSnapshot().status, 'checking')
-  await session.restore()
-  assert.equal(session.getSnapshot().status, 'anonymous')
+test('rota privada redireciona ao login, sem consultar /me quando não há token', async () => {
+  await openApp()
+  assert.equal(window.location.pathname, '/login')
+  assert.equal(fetch.mock.callCount(), 0)
 })
 
-test('validates /me before storing token and exposing user', async () => {
-  const result = deferred()
-  const storage = storageWith()
-  const session = createAuthSession({ storage, service: { login: async () => 'test-token', me: () => result.promise } })
-  const login = session.login({ email: user.email, password: 'test-only' })
-  await Promise.resolve()
-  assert.equal(storage.get(), null)
-  assert.equal(session.getSnapshot().user, null)
-  result.resolve(user)
-  assert.equal(await login, true)
-  assert.equal(storage.get(), 'test-token')
-  assert.deepEqual(session.getSnapshot().user, user)
+test('só salva o token depois de /me, mostra o painel e sai pela rota protegida', async () => {
+  const profile = deferred()
+  fetch.mock.mockImplementation((url) => url.endsWith('/auth/login') ? Response.json({ token: 'novo' }) : profile.promise)
+  await openApp()
+  const login = auth.login({ email: user.email, password: 'test-only' })
+  assert.equal(sessionStorage.getItem(tokenKey), null)
+  await act(async () => {
+    profile.resolve(Response.json(user))
+    await login
+  })
+  assert.equal(sessionStorage.getItem(tokenKey), 'novo')
+  assert.equal(window.location.pathname, '/dashboard')
+  assert.match(document.body.textContent, /teste@example.com/)
+  await act(() => document.querySelector('button').click())
+  assert.equal(sessionStorage.getItem(tokenKey), null)
+  assert.equal(window.location.pathname, '/login')
 })
 
-test('rejects login if profile fails, without persisting candidate token', async () => {
-  const storage = storageWith()
-  const session = createAuthSession({ storage, service: { login: async () => 'candidate', me: async () => { throw new ApiError('invalid', { status: 401 }) } } })
-  await assert.rejects(session.login({}), { status: 401 })
-  assert.equal(storage.get(), null)
-  assert.equal(session.getSnapshot().user, null)
+test('falha ao validar o novo token impede o login', async () => {
+  fetch.mock.mockImplementation((url) => url.endsWith('/auth/login') ? Response.json({ token: 'candidato' }) : new Response(null, { status: 401 }))
+  await openApp()
+  await assert.rejects(auth.login({}), { status: 401 })
+  assert.equal(sessionStorage.getItem(tokenKey), null)
+  assert.equal(window.location.pathname, '/login')
 })
 
-test('restores persisted session after refresh', async () => {
-  const session = createAuthSession({ storage: storageWith('test-token'), service: { me: async (token) => { assert.equal(token, 'test-token'); return user } } })
-  await session.restore()
-  assert.equal(session.getSnapshot().status, 'authenticated')
-  assert.deepEqual(session.getSnapshot().user, user)
+test('a recuperação confirma a conta e ignora um 401 tardio do primeiro efeito do StrictMode', async () => {
+  const first = deferred()
+  sessionStorage.setItem(tokenKey, 'valido')
+  fetch.mock.mockImplementation(() => Response.json(user))
+  fetch.mock.mockImplementationOnce(() => first.promise)
+  await openApp()
+  assert.equal(auth.user.email, user.email)
+  await act(() => first.resolve(new Response(null, { status: 401 })))
+  assert.equal(window.location.pathname, '/dashboard')
+  assert.equal(sessionStorage.getItem(tokenKey), 'valido')
 })
 
-test('clears invalid or expired tokens and requests a new login', async () => {
-  const storage = storageWith('expired')
-  const session = createAuthSession({ storage, service: { me: async () => { throw new ApiError('Unauthorized', { status: 401 }) } } })
-  await session.restore()
-  assert.equal(storage.get(), null)
-  assert.equal(session.getSnapshot().status, 'anonymous')
-  assert.match(session.getSnapshot().notice, /Entre novamente/)
+test('uma sessão expirada exige novo login', async () => {
+  sessionStorage.setItem(tokenKey, 'expirado')
+  fetch.mock.mockImplementation(() => new Response(null, { status: 401 }))
+  await openApp()
+  assert.equal(sessionStorage.getItem(tokenKey), null)
+  assert.equal(window.location.pathname, '/login')
+  assert.match(document.body.textContent, /Entre novamente/)
 })
 
-test('keeps token on network/server failure and retries successfully', async () => {
-  for (const status of [0, 503]) {
-    let unavailable = true
-    const storage = storageWith('valid')
-    const session = createAuthSession({ storage, service: { me: async () => {
-      if (unavailable) throw new ApiError('API indisponível', { status })
-      return user
-    } } })
-    await session.restore()
-    assert.equal(session.getSnapshot().status, 'error')
-    assert.equal(storage.get(), 'valid')
-    unavailable = false
-    await session.restore()
-    assert.deepEqual(session.getSnapshot().user, user)
-  }
+for (const failure of ['conexão', '503']) {
+  test(`falha de ${failure} preserva o token e permite tentar novamente`, async () => {
+    sessionStorage.setItem(tokenKey, 'valido')
+    fetch.mock.mockImplementation(() => {
+      if (failure === 'conexão') throw new TypeError('Offline')
+      return new Response(null, { status: 503 })
+    })
+    await openApp()
+    assert.ok(document.querySelector('[role="alert"]'))
+    assert.equal(sessionStorage.getItem(tokenKey), 'valido')
+    fetch.mock.mockImplementation(() => Response.json(user))
+    await act(() => [...document.querySelectorAll('button')].find(button => button.textContent === 'Tentar novamente').click())
+    assert.equal(auth.user.email, user.email)
+  })
+}
+
+test('um 401 de outra chamada não encerra uma sessão mais recente', async () => {
+  sessionStorage.setItem(tokenKey, 'novo')
+  fetch.mock.mockImplementation(() => Response.json(user))
+  await openApp()
+  fetch.mock.mockImplementation(() => new Response(null, { status: 401 }))
+  await assert.rejects(api.request('/tasks', { token: 'antigo' }), { status: 401 })
+  assert.equal(sessionStorage.getItem(tokenKey), 'novo')
+  await act(() => assert.rejects(api.request('/tasks'), { status: 401 }))
+  assert.equal(window.location.pathname, '/login')
+  assert.equal(sessionStorage.getItem(tokenKey), null)
 })
 
-test('logout prevents a late restore response from restoring the session', async () => {
-  const response = deferred()
-  const storage = storageWith('valid')
-  const session = createAuthSession({ storage, service: { me: () => response.promise } })
-  const restore = session.restore()
-  session.logout()
-  response.resolve(user)
-  await restore
-  assert.equal(storage.get(), null)
-  assert.equal(session.getSnapshot().user, null)
+test('logout descarta /me pendente mesmo se o transporte entregar a resposta', async () => {
+  const profile = deferred()
+  const requested = deferred()
+  fetch.mock.mockImplementation((url) => {
+    if (url.endsWith('/auth/login')) return Response.json({ token: 'candidato' })
+    requested.resolve()
+    return profile.promise
+  })
+  await openApp()
+  const login = auth.login({})
+  await requested.promise
+  await act(() => auth.logout())
+  profile.resolve(Response.json(user))
+  await assert.rejects(login, { name: 'AbortError' })
+  assert.equal(sessionStorage.getItem(tokenKey), null)
+  assert.equal(auth.user, null)
 })
 
-test('logout cancels a login even when /me ignores abort', async () => {
-  const response = deferred()
-  const storage = storageWith()
-  const session = createAuthSession({ storage, service: { login: async () => 'candidate', me: () => response.promise } })
-  const login = session.login({})
-  await Promise.resolve()
-  session.logout()
-  response.resolve(user)
-  assert.equal(await login, false)
-  assert.equal(storage.get(), null)
-})
-
-test('effect cleanup and restart ignore stale success and failure in StrictMode', async () => {
-  for (const fails of [true, false]) {
-    const first = deferred()
-    const storage = storageWith('valid')
-    let count = 0
-    const session = createAuthSession({ storage, service: { me: async () => ++count === 1 ? first.promise : user } })
-    const old = session.restore()
-    session.cancelPending()
-    await session.restore()
-    if (fails) first.reject(new ApiError('old failure', { status: 401 }))
-    else first.resolve({ ...user, name: 'Stale' })
-    await old
-    assert.deepEqual(session.getSnapshot().user, user)
-    assert.equal(storage.get(), 'valid')
-  }
-})
-
-test('authenticated 401 clears current session but delayed 401 for an old token does not', async () => {
-  const storage = storageWith('new-token')
-  const session = createAuthSession({ storage, service: { me: async () => user } })
-  await session.restore()
-  session.invalidate('old-token')
-  assert.equal(storage.get(), 'new-token')
-  session.invalidate('new-token')
-  assert.equal(storage.get(), null)
-  assert.equal(session.getSnapshot().user, null)
+test('desmontar o provedor cancela uma recuperação em andamento', async () => {
+  const profile = deferred()
+  sessionStorage.setItem(tokenKey, 'valido')
+  let signal
+  fetch.mock.mockImplementation((_url, options) => {
+    signal = options.signal
+    return profile.promise
+  })
+  await openApp()
+  assert.match(document.body.textContent, /Verificando sua sessão/)
+  await act(() => root.render(null))
+  assert.ok(signal.aborted)
+  await act(() => profile.resolve(new Response(null, { status: 401 })))
+  assert.equal(sessionStorage.getItem(tokenKey), 'valido')
 })

@@ -15,8 +15,10 @@ export default function RegisterPage() {
   const busy = useRef(false)
   const { user } = useAuth()
   const navigate = useNavigate()
+
   useEffect(() => () => pending.current?.abort(), [])
   if (user) return <Navigate to="/dashboard" replace />
+
   async function handleSubmit(e) {
     e.preventDefault()
     if (busy.current) return
@@ -39,7 +41,9 @@ export default function RegisterPage() {
       if (!controller.signal.aborted) setSubmitting(false)
     }
   }
+
   const change = (event) => setValues((current) => ({ ...current, [event.target.name]: event.target.value }))
+  
   return (
     <main className="auth-card">
       <h1>Criar conta no FocusTask</h1>
