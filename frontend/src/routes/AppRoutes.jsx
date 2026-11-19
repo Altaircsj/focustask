@@ -1,4 +1,5 @@
-import { Link, Navigate, Outlet, Route, Routes } from 'react-router'
+import { Link, Navigate, Route, Routes } from 'react-router'
+import AppLayout from '../layouts/AppLayout'
 import LoginPage from '../features/auth/pages/LoginPage'
 import RegisterPage from '../features/auth/pages/RegisterPage'
 import { useAuth } from '../features/auth/useAuth'
@@ -15,7 +16,7 @@ export default function AppRoutes() {
       <Route path="/" element={<Navigate to={user ? '/dashboard' : '/login'} replace />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
-      <Route element={user ? <Outlet /> : <Navigate to="/login" replace />}>
+      <Route element={user ? <AppLayout /> : <Navigate to="/login" replace />}>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/projects" element={<PlaceholderPage titulo="Projetos" />} />
         <Route path="/projects/:projectId" element={<PlaceholderPage titulo="Detalhes do projeto" />} />

@@ -123,6 +123,16 @@ for (const failure of ['conexão', '503']) {
   })
 }
 
+test('o menu lateral lista as rotas, destaca a atual e mostra a conta', async () => {
+  sessionStorage.setItem(tokenKey, 'valido')
+  fetch.mock.mockImplementation(() => Response.json(user))
+  await openApp()
+  const menu = document.querySelector('nav[aria-label="Menu lateral"]')
+  assert.deepEqual([...menu.querySelectorAll('a')].map((link) => link.getAttribute('href')), ['/dashboard', '/projects', '/tasks', '/focus-sessions', '/profile'])
+  assert.equal(menu.querySelector('[aria-current="page"]').textContent, 'Painel')
+  assert.match(document.querySelector('.sidebar-user').textContent, /Conta de teste.*teste@example\.com/)
+})
+
 test('um 401 de outra chamada não encerra uma sessão mais recente', async () => {
   sessionStorage.setItem(tokenKey, 'novo')
   fetch.mock.mockImplementation(() => Response.json(user))

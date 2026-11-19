@@ -105,7 +105,8 @@ este trabalho. Não houve deploy ou teste do serviço remoto.
 | `src/routes/AppRoutes.jsx` | Rotas públicas e grupo de páginas que exigem usuário autenticado |
 | `src/features/dashboard/pages/DashboardPage.jsx` | Dados reais e botão Sair |
 | `src/features/dashboard/dashboard.css` | Estilos específicos do painel |
-| `src/layouts/components/SideBar.jsx` | Arquivo existente reservado ao menu lateral, ainda sem implementação |
+| `src/layouts/AppLayout.jsx`, `src/layouts/app-layout.css` | Estrutura das rotas autenticadas: menu lateral à esquerda e a página (`Outlet`) ao lado |
+| `src/layouts/components/SideBar.jsx`, `src/layouts/components/sidebar.css` | Menu lateral do Figma: rotas com destaque da atual (`NavLink`), nome e e-mail do `useAuth` |
 
 O token fica no `sessionStorage` da aba, na chave `focustask.token`. O usuário
 fica em memória. Ao iniciar, `useEffect` verifica `/me` antes de liberar as rotas.
