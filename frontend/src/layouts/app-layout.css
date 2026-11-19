@@ -1,0 +1,14 @@
+/* O #root padrão do Vite limita a 1126px e centraliza; o layout com menu usa a tela inteira. */
+#root:has(.app-shell) {
+  width: 100%;
+  border-inline: 0;
+  text-align: left;
+}
+
+.app-shell { display: flex; flex: 1; }
+.app-content { flex: 1; min-width: 0; }
+
+@media (max-width: 768px) {
+  .app-shell { flex-direction: column; }
+  .app-shell .sidebar { position: static; width: 100%; height: auto; gap: 24px; border-right: 0; border-bottom: 1px solid var(--border); }
+}
