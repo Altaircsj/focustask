@@ -96,6 +96,10 @@ export default function DashboardPage() {
     })
   }
 
+  function finishNow() {
+    perform(() => focusSessionService.setStatus(current.id, 'COMPLETED'), finishSession)
+  }
+
   function discardSession() {
     if (!window.confirm('Descartar a sessão em andamento? Ela será excluída do histórico.')) return
     perform(() => focusSessionService.remove(current.id), () => setData((state) => ({ ...state, sessions: state.sessions.filter((item) => item.id !== current.id) })))
@@ -171,6 +175,11 @@ export default function DashboardPage() {
               <button type="button" className="dash-btn" disabled={Boolean(current) || busy} onClick={toggleTimer}>
                 <Zap size={16} aria-hidden="true" />Foco avulso
               </button>
+              {current && (
+                <button type="button" className="dash-btn" disabled={busy} onClick={finishNow}>
+                  <CircleCheck size={16} aria-hidden="true" />Finalizar sessão
+                </button>
+              )}
               <button type="button" className="dash-btn dash-btn-primary" disabled={Boolean(current) || busy} onClick={() => setModal({ type: 'new' })}>
                 <SquareCheck size={16} aria-hidden="true" />Foco com tarefa
               </button>

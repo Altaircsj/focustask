@@ -316,6 +316,23 @@ test('ao zerar o cronômetro a sessão é concluída e o modal de sessão conclu
   assert.match(document.querySelector('.modal-summary').textContent, /Revisar protótipo/)
 })
 
+test('"Finalizar sessão" conclui antes do tempo e abre o modal de sessão concluída', async () => {
+  const calls = []
+  const running = { ...focusSession, id: 6, taskId: null, status: 'RUNNING', startedAt: new Date(Date.now() - 5 * 60000).toISOString(), endedAt: null }
+  mockFocusApi([running], (path, options) => {
+    calls.push([options.method, path, options.body])
+    return Response.json({ ...running, status: 'COMPLETED', endedAt: new Date().toISOString() })
+  }, dashboardTasks)
+  await openApp()
+  await settle()
+  await act(() => [...document.querySelectorAll('button')].find((button) => button.textContent === 'Finalizar sessão').click())
+  await settle()
+  assert.deepEqual(calls, [['PATCH', '/focus-sessions/6', JSON.stringify({ status: 'COMPLETED' })]])
+  assert.equal(document.querySelector('[role="dialog"] h2').textContent, 'Sessão concluída')
+  assert.match(document.querySelector('.modal-summary').textContent, /5 minutos/)
+  assert.equal([...document.querySelectorAll('button')].some((button) => button.textContent === 'Finalizar sessão'), false)
+})
+
 test('marcar uma tarefa do dia como concluída envia PATCH e atualiza o resumo', async () => {
   const calls = []
   mockDashboardApi((path, options) => {
