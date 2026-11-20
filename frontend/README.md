@@ -1,7 +1,7 @@
 # FocusTask — frontend
 
 React, JavaScript, Vite e React Router. Cadastro e login usam a API real; o painel
-exibe nome e email retornados por `/me`. As sessões de foco têm histórico e criação
+mostra saudação, resumo do dia, cronômetro de foco e tarefas do dia. As sessões de foco têm histórico e criação
 com a API real. Projetos, tarefas e perfil estão protegidos, mas seus CRUDs ainda não
 foram implementados.
 
@@ -104,7 +104,9 @@ este trabalho. Não houve deploy ou teste do serviço remoto.
 | `src/features/auth/auth.css` | Estilos específicos dos formulários de autenticação |
 | `src/features/auth/validation.js` | Limites dos DTOs, incluindo 72 bytes UTF-8 |
 | `src/routes/AppRoutes.jsx` | Rotas públicas e grupo de páginas que exigem usuário autenticado |
-| `src/features/dashboard/pages/DashboardPage.jsx` | Dados reais e botão Sair |
+| `src/features/dashboard/pages/DashboardPage.jsx` | Painel: resumo, cronômetro (25 min) e tarefas do dia |
+| `src/features/dashboard/dashboardService.js` | Concluir tarefa (`PATCH /tasks/{id}`) |
+| `src/features/dashboard/summary.js` | Lógica pura: saudação, resumo, cronômetro e tarefas do dia |
 | `src/features/dashboard/dashboard.css` | Estilos específicos do painel |
 | `src/features/focusSessions/pages/FocusSessionsPage.jsx` | Histórico em `/focus-sessions`: filtros Todas/Avulsa/Tarefa, pausar, retomar, concluir e excluir |
 | `src/features/focusSessions/pages/NewFocusSessionPage.jsx` | Criação em `/focus-sessions/new`: projeto e tarefa opcionais; sem tarefa a sessão é avulsa |
