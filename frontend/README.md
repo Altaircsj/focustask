@@ -1,8 +1,9 @@
 # FocusTask — frontend
 
 React, JavaScript, Vite e React Router. Cadastro e login usam a API real; o painel
-exibe nome e email retornados por `/me`. Projetos, tarefas, sessões de foco e perfil
-estão protegidos, mas seus CRUDs ainda não foram implementados.
+exibe nome e email retornados por `/me`. As sessões de foco têm histórico e criação
+com a API real. Projetos, tarefas e perfil estão protegidos, mas seus CRUDs ainda não
+foram implementados.
 
 ## Ambiente local
 
@@ -105,6 +106,10 @@ este trabalho. Não houve deploy ou teste do serviço remoto.
 | `src/routes/AppRoutes.jsx` | Rotas públicas e grupo de páginas que exigem usuário autenticado |
 | `src/features/dashboard/pages/DashboardPage.jsx` | Dados reais e botão Sair |
 | `src/features/dashboard/dashboard.css` | Estilos específicos do painel |
+| `src/features/focusSessions/pages/FocusSessionsPage.jsx` | Histórico em `/focus-sessions`: filtros Todas/Avulsa/Tarefa, pausar, retomar, concluir e excluir |
+| `src/features/focusSessions/pages/NewFocusSessionPage.jsx` | Criação em `/focus-sessions/new`: projeto e tarefa opcionais; sem tarefa a sessão é avulsa |
+| `src/features/focusSessions/focusSessionService.js`, `format.js` | Chamadas à API e cálculo/formatação da duração (descontando pausas) |
+| `src/features/focusSessions/focus-sessions.css` | Estilos das duas páginas de sessões |
 | `src/layouts/AppLayout.jsx`, `src/layouts/app-layout.css` | Estrutura das rotas autenticadas: menu lateral à esquerda e a página (`Outlet`) ao lado |
 | `src/layouts/components/SideBar.jsx`, `src/layouts/components/sidebar.css` | Menu lateral do Figma: rotas com destaque da atual (`NavLink`), nome e e-mail do `useAuth` |
 
