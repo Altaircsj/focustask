@@ -1,6 +1,9 @@
 import { activeSeconds } from '../focusSessions/format.js'
 
-export const FOCUS_SECONDS = 25 * 60
+export const DEFAULT_MINUTES = 25
+export const MINUTE_OPTIONS = [15, 25, 45, 60]
+export const MAX_MINUTES = 180
+export const FOCUS_SECONDS = DEFAULT_MINUTES * 60
 const PRIORITY_RANK = { HIGH: 0, MEDIUM: 1, LOW: 2 }
 const pad = (value) => String(value).padStart(2, '0')
 
@@ -55,8 +58,8 @@ export function focusNumber(sessions, current, now = Date.now()) {
   return Math.max(1, today + (current ? 0 : 1))
 }
 
-export function remainingSeconds(session, now = Date.now()) {
-  return Math.max(0, FOCUS_SECONDS - activeSeconds(session, now))
+export function remainingSeconds(session, now = Date.now(), total = FOCUS_SECONDS) {
+  return Math.max(0, total - activeSeconds(session, now))
 }
 
 // Pendentes com prazo até hoje ou sem prazo, do prazo mais antigo e maior prioridade ao mais recente.

@@ -54,6 +54,7 @@ test('o tempo restante parte de 25 minutos e nunca fica negativo', () => {
   const running = session({ status: 'RUNNING', startedAt: at(14, 50), endedAt: null })
   assert.equal(remainingSeconds(running, now), 15 * 60)
   assert.equal(remainingSeconds(session({ status: 'RUNNING', startedAt: at(13), endedAt: null }), now), 0)
+  assert.equal(remainingSeconds(running, now, 45 * 60), 35 * 60)
 })
 
 test('o número do foco conta as sessões de hoje, incluindo a atual', () => {

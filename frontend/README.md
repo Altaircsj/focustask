@@ -105,7 +105,10 @@ este trabalho. Não houve deploy ou teste do serviço remoto.
 | `src/features/auth/validation.js` | Limites dos DTOs, incluindo 72 bytes UTF-8 |
 | `src/routes/AppRoutes.jsx` | Rotas públicas e grupo de páginas que exigem usuário autenticado |
 | `src/features/dashboard/pages/DashboardPage.jsx` | Painel: resumo, cronômetro (25 min) e tarefas do dia |
-| `src/features/dashboard/dashboardService.js` | Concluir tarefa (`PATCH /tasks/{id}`) |
+| `src/features/dashboard/components/Modal.jsx` | Diálogo base (Esc e clique fora fecham) |
+| `src/features/dashboard/components/NewFocusModal.jsx` | Modal "Nova Sessão de Foco": projeto, tarefa e duração |
+| `src/features/dashboard/components/CompletedSessionModal.jsx` | Modal "Sessão concluída" ao zerar o cronômetro |
+| `src/features/dashboard/dashboardService.js` | Concluir tarefa (`PATCH /tasks/{id}`) e duração preferida (localStorage) |
 | `src/features/dashboard/summary.js` | Lógica pura: saudação, resumo, cronômetro e tarefas do dia |
 | `src/features/dashboard/dashboard.css` | Estilos específicos do painel |
 | `src/features/focusSessions/pages/FocusSessionsPage.jsx` | Histórico em `/focus-sessions`: filtros Todas/Avulsa/Tarefa, pausar, retomar, concluir e excluir |
