@@ -139,13 +139,13 @@ const history = [
   { ...focusSession, id: 2, taskId: null, status: 'COMPLETED', startedAt: '2026-02-25T16:00:00Z', endedAt: '2026-02-25T17:00:00Z' },
 ]
 
-function mockFocusApi(sessions, onOther) {
+function mockFocusApi(sessions, onOther, tasks = [{ id: 7, projectId: 3, title: 'Revisar protótipo', status: 'TODO' }]) {
   sessionStorage.setItem(tokenKey, 'valido')
   fetch.mock.mockImplementation((url, options = {}) => {
     const path = url.replace('http://api.test/api/v1', '')
     if (path === '/me') return Response.json(user)
     if (path === '/focus-sessions' && options.method === 'GET') return Response.json(sessions)
-    if (path === '/tasks') return Response.json([{ id: 7, projectId: 3, title: 'Revisar protótipo', status: 'TODO' }])
+    if (path === '/tasks' && options.method === 'GET') return Response.json(tasks)
     if (path === '/projects') return Response.json([{ id: 3, name: 'Redesign App' }])
     return onOther?.(path, options) ?? new Response(null, { status: 404 })
   })
@@ -207,6 +207,64 @@ test('a nova sessão vincula a tarefa do projeto escolhido e volta ao histórico
   await settle()
   assert.deepEqual(calls, [['POST', '/focus-sessions', JSON.stringify({ taskId: 7 })]])
   assert.equal(window.location.pathname, '/focus-sessions')
+})
+
+const dashboardTasks = [
+  { id: 1, projectId: 3, title: 'Revisar protótipo', status: 'TODO', priority: 'HIGH', dueDate: null },
+  { id: 2, projectId: 3, title: 'Escrever relatório', status: 'DONE', priority: 'LOW', dueDate: null },
+  { id: 3, projectId: 3, title: 'Planejar o próximo mês', status: 'TODO', priority: 'LOW', dueDate: '2999-01-01' },
+]
+
+function mockDashboardApi(onOther) {
+  const minutesAgo = (minutes) => new Date(Date.now() - minutes * 60000).toISOString()
+  const sessions = [{ ...focusSession, id: 1, taskId: null, status: 'COMPLETED', startedAt: minutesAgo(3), endedAt: minutesAgo(2) }]
+  mockFocusApi(sessions, onOther, dashboardTasks)
+}
+
+test('o painel mostra saudação, resumo, cronômetro e as tarefas do dia', async () => {
+  mockDashboardApi()
+  await openApp()
+  await settle()
+  assert.match(document.querySelector('h1').textContent, /^(Bom dia|Boa tarde|Boa noite), Conta$/)
+  const stats = [...document.querySelectorAll('.stat-card')].map((card) => card.textContent)
+  assert.deepEqual(stats.map((text) => text.replace(/^.*?(Tempo Focado|Sessões Concluídas|Tarefas Concluídas|Tarefas Pendentes)/, '$1')), ['Tempo Focado1m', 'Sessões Concluídas1', 'Tarefas Concluídas1', 'Tarefas Pendentes2'])
+  assert.equal(document.querySelector('[role="timer"]').textContent, '25:00')
+  assert.match(document.querySelector('.timer-badge').textContent, /Foco #2/)
+  const rows = [...document.querySelectorAll('.task-row')].map((row) => row.textContent)
+  assert.equal(rows.length, 1)
+  assert.match(rows[0], /Revisar protótipo.*Redesign App.*Alta/)
+})
+
+test('iniciar um foco avulso cria a sessão e troca o botão para pausar', async () => {
+  const calls = []
+  mockDashboardApi((path, options) => {
+    calls.push([options.method, path, options.body])
+    return Response.json({ ...focusSession, id: 8, taskId: null, status: 'RUNNING', startedAt: new Date().toISOString(), endedAt: null }, { status: 201 })
+  })
+  await openApp()
+  await settle()
+  assert.equal(document.querySelector('button[aria-label="Pausar"]'), null)
+  await act(() => [...document.querySelectorAll('button')].find((button) => button.textContent === 'Foco avulso').click())
+  await settle()
+  assert.deepEqual(calls, [['POST', '/focus-sessions', JSON.stringify({ taskId: null })]])
+  assert.ok(document.querySelector('button[aria-label="Pausar"]'))
+  assert.equal([...document.querySelectorAll('button')].find((button) => button.textContent === 'Foco avulso').disabled, true)
+})
+
+test('marcar uma tarefa do dia como concluída envia PATCH e atualiza o resumo', async () => {
+  const calls = []
+  mockDashboardApi((path, options) => {
+    calls.push([options.method, path, options.body])
+    return Response.json({ ...dashboardTasks[0], status: 'DONE' })
+  })
+  await openApp()
+  await settle()
+  await act(() => document.querySelector('.task-check').click())
+  await settle()
+  assert.deepEqual(calls, [['PATCH', '/tasks/1', JSON.stringify({ status: 'DONE' })]])
+  assert.equal(document.querySelectorAll('.task-row').length, 0)
+  assert.match(document.querySelector('.tasks-empty').textContent, /Nenhuma tarefa pendente/)
+  assert.match([...document.querySelectorAll('.stat-card')].at(-1).textContent, /Tarefas Pendentes1/)
 })
 
 test('um 401 de outra chamada não encerra uma sessão mais recente', async () => {
