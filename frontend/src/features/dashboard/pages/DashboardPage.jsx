@@ -3,9 +3,11 @@ import { Link } from 'react-router'
 import { AlarmClock, Award, CircleCheck, Ellipsis, ListTodo, Pause, Play, RefreshCw, SquareCheck, Zap } from 'lucide-react'
 import { useAuth } from '../../auth/useAuth'
 import { catalogService, focusSessionService } from '../../focusSessions/focusSessionService'
-import { dashboardService } from '../dashboardService'
+import { dashboardService, loadMinutes, saveMinutes } from '../dashboardService'
+import CompletedSessionModal from '../components/CompletedSessionModal'
+import NewFocusModal from '../components/NewFocusModal'
 import {
-  FOCUS_SECONDS, currentSession, dailyTasks, firstName, focusNumber, formatClock, formatFocusedTime, greeting, remainingSeconds, summarize,
+  DEFAULT_MINUTES, currentSession, dailyTasks, firstName, focusNumber, formatClock, formatFocusedTime, greeting, remainingSeconds, summarize,
 } from '../summary'
 import '../dashboard.css'
 
@@ -17,6 +19,8 @@ export default function DashboardPage() {
   const [attempt, setAttempt] = useState(0)
   const [now, setNow] = useState(() => Date.now())
   const [busy, setBusy] = useState(false)
+  const [minutes, setMinutes] = useState(() => loadMinutes(DEFAULT_MINUTES))
+  const [modal, setModal] = useState(null)
   const [actionError, setActionError] = useState('')
   const working = useRef(false)
 
@@ -36,7 +40,7 @@ export default function DashboardPage() {
 
   const ready = data.status === 'ready'
   const current = ready ? currentSession(data.sessions) : null
-  const remaining = current ? remainingSeconds(current, now) : FOCUS_SECONDS
+  const remaining = current ? remainingSeconds(current, now, minutes * 60) : minutes * 60
   const running = current?.status === 'RUNNING'
 
   async function perform(request, onDone) {
@@ -62,20 +66,38 @@ export default function DashboardPage() {
     })
   }
 
+  function finishSession(session) {
+    saveSession(session)
+    setModal({ type: 'done', session })
+  }
+
   // O backend não conhece a duração do ciclo: ao zerar, a sessão é concluída aqui.
   useEffect(() => {
     if (!running) return undefined
     const timer = setInterval(() => {
       const tick = Date.now()
       setNow(tick)
-      if (remainingSeconds(current, tick) === 0) perform(() => focusSessionService.setStatus(current.id, 'COMPLETED'), saveSession)
+      if (remainingSeconds(current, tick, minutes * 60) === 0) perform(() => focusSessionService.setStatus(current.id, 'COMPLETED'), finishSession)
     }, 1000)
     return () => clearInterval(timer)
-  }, [running, current])
+  }, [running, current, minutes])
 
   function toggleTimer() {
     if (!current) return perform(() => focusSessionService.create(null), saveSession)
     return perform(() => focusSessionService.setStatus(current.id, running ? 'PAUSED' : 'RUNNING'), saveSession)
+  }
+
+  function startFocus({ taskId, minutes: chosen }) {
+    setMinutes(chosen)
+    saveMinutes(chosen)
+    perform(() => focusSessionService.create(taskId), (session) => {
+      saveSession(session)
+      setModal(null)
+    })
+  }
+
+  function finishNow() {
+    perform(() => focusSessionService.setStatus(current.id, 'COMPLETED'), finishSession)
   }
 
   function discardSession() {
@@ -153,7 +175,14 @@ export default function DashboardPage() {
               <button type="button" className="dash-btn" disabled={Boolean(current) || busy} onClick={toggleTimer}>
                 <Zap size={16} aria-hidden="true" />Foco avulso
               </button>
-              <Link to="/focus-sessions/new" className="dash-btn dash-btn-primary"><SquareCheck size={16} aria-hidden="true" />Foco com tarefa</Link>
+              {current && (
+                <button type="button" className="dash-btn" disabled={busy} onClick={finishNow}>
+                  <CircleCheck size={16} aria-hidden="true" />Finalizar sessão
+                </button>
+              )}
+              <button type="button" className="dash-btn dash-btn-primary" disabled={Boolean(current) || busy} onClick={() => setModal({ type: 'new' })}>
+                <SquareCheck size={16} aria-hidden="true" />Foco com tarefa
+              </button>
             </div>
             {actionError && <p role="alert">{actionError}</p>}
           </section>
@@ -184,6 +213,14 @@ export default function DashboardPage() {
           </section>
         </>
       )}
+
+      {ready && modal?.type === 'new' && (
+        <NewFocusModal projects={data.projects} tasks={data.tasks} minutes={minutes} busy={busy} onStart={startFocus} onClose={() => setModal(null)} />
+      )}
+      {ready && modal?.type === 'done' && (() => {
+        const task = data.tasks.find((item) => item.id === modal.session.taskId)
+        return <CompletedSessionModal session={modal.session} task={task} project={task && projects.get(task.projectId)} onClose={() => setModal(null)} />
+      })()}
     </main>
   )
 }

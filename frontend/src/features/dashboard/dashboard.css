@@ -117,3 +117,26 @@
   .task-row { flex-wrap: wrap; gap: 12px; }
   .task-meta { width: 100%; padding-left: 32px; box-sizing: border-box; }
 }
+
+.modal-overlay { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0, 0, 0, 0.5); }
+.modal-card { width: 100%; max-width: 480px; max-height: 100%; overflow-y: auto; padding: 32px; box-sizing: border-box; border-radius: 16px; background: var(--bg); color: var(--text-h); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2); outline: none; text-align: left; font-size: 14px; }
+.modal-card h2 { margin: 0; font-size: 20px; font-weight: 700; }
+.dashboard-page .modal-subtitle { margin: 4px 0 20px; color: var(--text); font-size: 13px; }
+.modal-card .form-field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.modal-card label,
+.modal-card .form-label { margin: 0; color: var(--text-h); font-size: 13px; font-weight: 600; }
+.modal-card select,
+.chip-input { margin: 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text-h); font: inherit; }
+.modal-card select:disabled { background: color-mix(in srgb, var(--text) 8%, var(--bg)); cursor: not-allowed; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text-h); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.chip[aria-pressed="true"] { border-color: var(--brand); background: var(--brand-bg); color: var(--brand); }
+.modal-card select:focus-visible,
+.chip-input:focus-visible,
+.chip:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.dashboard-page .modal-note { margin: 0 0 20px; padding: 12px; border-radius: 8px; background: color-mix(in srgb, var(--text) 8%, var(--bg)); color: var(--text); font-size: 12px; }
+.dashboard-page .modal-error { margin: 0; color: #ef4444; font-size: 12px; }
+.modal-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; }
+.modal-summary { display: flex; flex-direction: column; gap: 16px; margin: 20px 0; }
+.modal-summary dt { margin-bottom: 4px; font-size: 13px; font-weight: 600; }
+.modal-summary dd { margin: 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; color: var(--text); }

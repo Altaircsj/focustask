@@ -251,6 +251,88 @@ test('iniciar um foco avulso cria a sessão e troca o botão para pausar', async
   assert.equal([...document.querySelectorAll('button')].find((button) => button.textContent === 'Foco avulso').disabled, true)
 })
 
+test('"Foco com tarefa" abre o modal e inicia a sessão com a tarefa e a duração escolhidas', async () => {
+  const calls = []
+  mockDashboardApi((path, options) => {
+    calls.push([options.method, path, options.body])
+    return Response.json({ ...focusSession, id: 9, taskId: 1, status: 'RUNNING', startedAt: new Date().toISOString(), endedAt: null }, { status: 201 })
+  })
+  await openApp()
+  await settle()
+  const byText = (text) => [...document.querySelectorAll('button')].find((button) => button.textContent === text)
+  await act(() => byText('Foco com tarefa').click())
+  assert.equal(document.querySelector('[role="dialog"] h2').textContent, 'Nova Sessão de Foco')
+  assert.equal(document.querySelector('#focus-task').disabled, true)
+  await act(() => {
+    const select = document.querySelector('#focus-project')
+    select.value = '3'
+    select.dispatchEvent(new window.Event('change', { bubbles: true }))
+  })
+  assert.deepEqual([...document.querySelectorAll('#focus-task option')].map((option) => option.textContent), ['Nenhuma', 'Revisar protótipo', 'Planejar o próximo mês'])
+  await act(() => {
+    const select = document.querySelector('#focus-task')
+    select.value = '1'
+    select.dispatchEvent(new window.Event('change', { bubbles: true }))
+  })
+  await act(() => byText('45m').click())
+  await act(() => byText('Iniciar Foco').click())
+  await settle()
+  assert.deepEqual(calls, [['POST', '/focus-sessions', JSON.stringify({ taskId: 1 })]])
+  assert.equal(document.querySelector('[role="dialog"]'), null)
+  assert.equal(document.querySelector('[role="timer"]').textContent, '45:00')
+  assert.ok(document.querySelector('button[aria-label="Pausar"]'))
+})
+
+test('o modal de nova sessão marca a duração escolhida e fecha com Esc', async () => {
+  mockDashboardApi()
+  await openApp()
+  await settle()
+  const byText = (text) => [...document.querySelectorAll('button')].find((button) => button.textContent === text)
+  await act(() => byText('Foco com tarefa').click())
+  assert.equal(byText('25m').getAttribute('aria-pressed'), 'true')
+  await act(() => byText('15m').click())
+  assert.equal(byText('15m').getAttribute('aria-pressed'), 'true')
+  assert.equal(byText('25m').getAttribute('aria-pressed'), 'false')
+  await act(() => byText('Personalizado…').click())
+  assert.ok(document.querySelector('input[aria-label="Minutos"]'))
+  await act(() => document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
+  assert.equal(document.querySelector('[role="dialog"]'), null)
+})
+
+test('ao zerar o cronômetro a sessão é concluída e o modal de sessão concluída aparece', async () => {
+  const calls = []
+  const minutesAgo = (minutes) => new Date(Date.now() - minutes * 60000).toISOString()
+  const running = { ...focusSession, id: 5, taskId: 1, status: 'RUNNING', startedAt: minutesAgo(30), endedAt: null }
+  mockFocusApi([running], (path, options) => {
+    calls.push([options.method, path, options.body])
+    return Response.json({ ...running, status: 'COMPLETED', endedAt: new Date().toISOString() })
+  }, dashboardTasks)
+  await openApp()
+  await settle()
+  await act(() => new Promise((resolve) => setTimeout(resolve, 1200)))
+  await settle()
+  assert.deepEqual(calls, [['PATCH', '/focus-sessions/5', JSON.stringify({ status: 'COMPLETED' })]])
+  assert.equal(document.querySelector('[role="dialog"] h2').textContent, 'Sessão concluída')
+  assert.match(document.querySelector('.modal-summary').textContent, /Revisar protótipo/)
+})
+
+test('"Finalizar sessão" conclui antes do tempo e abre o modal de sessão concluída', async () => {
+  const calls = []
+  const running = { ...focusSession, id: 6, taskId: null, status: 'RUNNING', startedAt: new Date(Date.now() - 5 * 60000).toISOString(), endedAt: null }
+  mockFocusApi([running], (path, options) => {
+    calls.push([options.method, path, options.body])
+    return Response.json({ ...running, status: 'COMPLETED', endedAt: new Date().toISOString() })
+  }, dashboardTasks)
+  await openApp()
+  await settle()
+  await act(() => [...document.querySelectorAll('button')].find((button) => button.textContent === 'Finalizar sessão').click())
+  await settle()
+  assert.deepEqual(calls, [['PATCH', '/focus-sessions/6', JSON.stringify({ status: 'COMPLETED' })]])
+  assert.equal(document.querySelector('[role="dialog"] h2').textContent, 'Sessão concluída')
+  assert.match(document.querySelector('.modal-summary').textContent, /5 minutos/)
+  assert.equal([...document.querySelectorAll('button')].some((button) => button.textContent === 'Finalizar sessão'), false)
+})
+
 test('marcar uma tarefa do dia como concluída envia PATCH e atualiza o resumo', async () => {
   const calls = []
   mockDashboardApi((path, options) => {
