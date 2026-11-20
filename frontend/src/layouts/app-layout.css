@@ -5,7 +5,7 @@
   text-align: left;
 }
 
-.app-shell { display: flex; flex: 1; }
+.app-shell { --brand: #4d49fc; --brand-bg: rgba(77, 73, 252, 0.08); display: flex; flex: 1; }
 .app-content { flex: 1; min-width: 0; }
 
 @media (max-width: 768px) {

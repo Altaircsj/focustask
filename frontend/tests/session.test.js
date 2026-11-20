@@ -133,6 +133,82 @@ test('o menu lateral lista as rotas, destaca a atual e mostra a conta', async ()
   assert.match(document.querySelector('.sidebar-user').textContent, /Conta de teste.*teste@example\.com/)
 })
 
+const focusSession = { userId: 1, pausedAt: null, totalPausedSeconds: 0 }
+const history = [
+  { ...focusSession, id: 1, taskId: 7, status: 'COMPLETED', startedAt: '2026-02-26T09:30:00Z', endedAt: '2026-02-26T09:55:00Z' },
+  { ...focusSession, id: 2, taskId: null, status: 'COMPLETED', startedAt: '2026-02-25T16:00:00Z', endedAt: '2026-02-25T17:00:00Z' },
+]
+
+function mockFocusApi(sessions, onOther) {
+  sessionStorage.setItem(tokenKey, 'valido')
+  fetch.mock.mockImplementation((url, options = {}) => {
+    const path = url.replace('http://api.test/api/v1', '')
+    if (path === '/me') return Response.json(user)
+    if (path === '/focus-sessions' && options.method === 'GET') return Response.json(sessions)
+    if (path === '/tasks') return Response.json([{ id: 7, projectId: 3, title: 'Revisar protótipo', status: 'TODO' }])
+    if (path === '/projects') return Response.json([{ id: 3, name: 'Redesign App' }])
+    return onOther?.(path, options) ?? new Response(null, { status: 404 })
+  })
+}
+
+const settle = () => act(() => new Promise((resolve) => setTimeout(resolve, 0)))
+const rowsText = () => [...document.querySelectorAll('.sessions-table tbody tr')].map((row) => row.textContent)
+
+test('o histórico mostra duração, tarefa, projeto e tipo, e filtra por tipo', async () => {
+  mockFocusApi(history)
+  window.history.pushState({}, '', '/focus-sessions')
+  await openApp()
+  await settle()
+  const [recent, standalone] = rowsText()
+  assert.match(recent, /25m 00s.*Revisar protótipo.*Redesign App.*Tarefa/)
+  assert.match(standalone, /60m 00s.*—.*—.*Avulsa/)
+  await act(() => [...document.querySelectorAll('.filter-chip')].find((chip) => chip.textContent === 'Avulsa').click())
+  assert.equal(rowsText().length, 1)
+  assert.match(rowsText()[0], /Avulsa/)
+})
+
+test('concluir uma sessão em andamento envia PATCH e atualiza a linha', async () => {
+  const running = { ...focusSession, id: 5, taskId: null, status: 'RUNNING', startedAt: new Date(Date.now() - 60000).toISOString(), endedAt: null }
+  const calls = []
+  mockFocusApi([running], (path, options) => {
+    calls.push([options.method, path, options.body])
+    return Response.json({ ...running, status: 'COMPLETED', endedAt: new Date().toISOString() })
+  })
+  window.history.pushState({}, '', '/focus-sessions')
+  await openApp()
+  await settle()
+  assert.match(rowsText()[0], /Em andamento/)
+  await act(() => document.querySelector('.row-menu-trigger').click())
+  await act(() => [...document.querySelectorAll('.row-menu-list button')].find((button) => button.textContent === 'Concluir').click())
+  await settle()
+  assert.deepEqual(calls, [['PATCH', '/focus-sessions/5', JSON.stringify({ status: 'COMPLETED' })]])
+  assert.doesNotMatch(rowsText()[0], /Em andamento/)
+})
+
+test('a nova sessão vincula a tarefa do projeto escolhido e volta ao histórico', async () => {
+  const calls = []
+  mockFocusApi(history, (path, options) => {
+    calls.push([options.method, path, options.body])
+    return Response.json({ ...focusSession, id: 9, taskId: 7, status: 'RUNNING', startedAt: new Date().toISOString(), endedAt: null }, { status: 201 })
+  })
+  window.history.pushState({}, '', '/focus-sessions/new')
+  await openApp()
+  await settle()
+  const choose = (id, value) => act(() => {
+    const select = document.querySelector(id)
+    select.value = value
+    select.dispatchEvent(new window.Event('change', { bubbles: true }))
+  })
+  assert.equal(document.querySelector('#task').disabled, true)
+  await choose('#project', '3')
+  assert.equal(document.querySelector('#task').disabled, false)
+  await choose('#task', '7')
+  await act(() => document.querySelector('button[type="submit"]').click())
+  await settle()
+  assert.deepEqual(calls, [['POST', '/focus-sessions', JSON.stringify({ taskId: 7 })]])
+  assert.equal(window.location.pathname, '/focus-sessions')
+})
+
 test('um 401 de outra chamada não encerra uma sessão mais recente', async () => {
   sessionStorage.setItem(tokenKey, 'novo')
   fetch.mock.mockImplementation(() => Response.json(user))
