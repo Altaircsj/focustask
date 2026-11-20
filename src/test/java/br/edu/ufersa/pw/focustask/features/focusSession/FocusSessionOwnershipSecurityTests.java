@@ -3,6 +3,7 @@ package br.edu.ufersa.pw.focustask.features.focusSession;
 import br.edu.ufersa.pw.focustask.AuthenticatedMvcTest;
 import br.edu.ufersa.pw.focustask.features.user.UserInternalApi;
 import br.edu.ufersa.pw.focustask.features.task.TaskInternalApi;
+import br.edu.ufersa.pw.focustask.features.project.ProjectInternalApi;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -21,6 +22,7 @@ class FocusSessionOwnershipSecurityTests extends AuthenticatedMvcTest {
     @MockitoBean FocusSessionRepository repository;
     @MockitoBean UserInternalApi users;
     @MockitoBean TaskInternalApi tasks;
+    @MockitoBean ProjectInternalApi projects;
 
     @Test void adminCannotReadChangeDeleteOrAttachForeignResources() throws Exception {
         when(users.existePorId(7L)).thenReturn(true);
@@ -34,6 +36,8 @@ class FocusSessionOwnershipSecurityTests extends AuthenticatedMvcTest {
         mvc.perform(post("/api/v1/tasks/99/focus-sessions")).andExpect(status().isNotFound());
         mvc.perform(post("/api/v1/focus-sessions").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"taskId\":99}")).andExpect(status().isNotFound());
+        mvc.perform(post("/api/v1/focus-sessions").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"projectId\":99,\"plannedMinutes\":25}")).andExpect(status().isNotFound());
         verify(repository).findByIdAndUserId(88L, 7L);
         verify(repository, times(3)).findForUpdate(88L, 7L);
         verify(repository, never()).save(any());

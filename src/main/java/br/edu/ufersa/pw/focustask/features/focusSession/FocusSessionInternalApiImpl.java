@@ -20,6 +20,11 @@ class FocusSessionInternalApiImpl implements FocusSessionInternalApi {
     }
 
     @Override
+    public void desvincularDeProjeto(Long userId, Long projectId) {
+        repository.detachFromProject(userId, projectId);
+    }
+
+    @Override
     public void excluirPorUsuario(Long userId) {
         repository.deleteAllForUser(userId);
     }

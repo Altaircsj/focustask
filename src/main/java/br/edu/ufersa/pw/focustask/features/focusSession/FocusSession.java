@@ -39,6 +39,14 @@ class FocusSession {
     @Column(name = "task_id")
     private Long taskId;
 
+    @Column(name = "project_id")
+    private Long projectId;
+
+    private String title;
+
+    @Column(name = "planned_minutes")
+    private Integer plannedMinutes;
+
     @NotNull
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.VARCHAR)
@@ -142,6 +150,30 @@ class FocusSession {
     // Null detaches the task while preserving the session, including after completion.
     public void setTaskId(Long taskId) {
         this.taskId = taskId;
+        this.projectId = null;
+    }
+
+    public void setDirectProject(Long projectId) {
+        this.taskId = null;
+        this.projectId = projectId;
+    }
+
+    public Long getProjectId() { return projectId; }
+    public String getTitle() { return title; }
+    public Integer getPlannedMinutes() { return plannedMinutes; }
+
+    public void setTitle(String title) {
+        this.title = title == null || title.isBlank() ? null : title.strip();
+    }
+
+    public void planDuration(int minutes, Clock clock) {
+        requireNotCompleted("edited");
+        Instant end = pausedAt != null ? pausedAt : now(clock);
+        long activeSeconds = Duration.between(startedAt, end).getSeconds() - totalPausedSeconds;
+        if (minutes * 60L <= activeSeconds) {
+            throw new OperacaoInvalidaException("A duração planejada deve superar o tempo já trabalhado.");
+        }
+        this.plannedMinutes = minutes;
     }
 
     public FocusSessionStatus getStatus() {

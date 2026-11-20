@@ -25,7 +25,7 @@ class FocusSessionControllerTests extends br.edu.ufersa.pw.focustask.Authenticat
     @ParameterizedTest
     @MethodSource("validRequests")
     void validContractsDelegateAndReturnResponses(String method, String url, String body) throws Exception {
-        var saved = new FocusSessionResponseDTO(8L, 7L, null, FocusSessionStatusDTO.RUNNING, java.time.Instant.EPOCH, null, null, 0);
+        var saved = new FocusSessionResponseDTO(8L, 7L, null, FocusSessionStatusDTO.RUNNING, java.time.Instant.EPOCH, null, null, 0, null, null, null);
         switch (method) {
             case "POST" -> { when(service.create(eq(7L), any(FocusSessionCreateDTO.class))).thenReturn(saved);
                 when(service.createForTask(7L, 123L)).thenReturn(saved); }

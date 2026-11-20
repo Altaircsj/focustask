@@ -185,7 +185,7 @@ test('concluir uma sessão em andamento envia PATCH e atualiza a linha', async (
   assert.doesNotMatch(rowsText()[0], /Em andamento/)
 })
 
-test('a nova sessão vincula a tarefa do projeto escolhido e volta ao histórico', async () => {
+test('a rota de nova sessão abre o formulário do painel e inicia o relógio', async () => {
   const calls = []
   mockFocusApi(history, (path, options) => {
     calls.push([options.method, path, options.body])
@@ -199,14 +199,15 @@ test('a nova sessão vincula a tarefa do projeto escolhido e volta ao histórico
     select.value = value
     select.dispatchEvent(new window.Event('change', { bubbles: true }))
   })
-  assert.equal(document.querySelector('#task').disabled, true)
-  await choose('#project', '3')
-  assert.equal(document.querySelector('#task').disabled, false)
-  await choose('#task', '7')
+  assert.equal(document.querySelector('#focus-task').disabled, true)
+  await choose('#focus-project', '3')
+  assert.equal(document.querySelector('#focus-task').disabled, false)
+  await choose('#focus-task', '7')
   await act(() => document.querySelector('button[type="submit"]').click())
   await settle()
-  assert.deepEqual(calls, [['POST', '/focus-sessions', JSON.stringify({ taskId: 7 })]])
-  assert.equal(window.location.pathname, '/focus-sessions')
+  assert.deepEqual(calls, [['POST', '/focus-sessions', JSON.stringify({ title: '', plannedMinutes: 25, taskId: 7, projectId: null })]])
+  assert.equal(window.location.pathname, '/dashboard')
+  assert.ok(document.querySelector('button[aria-label="Pausar"]'))
 })
 
 const dashboardTasks = [
@@ -246,7 +247,7 @@ test('iniciar um foco avulso cria a sessão e troca o botão para pausar', async
   assert.equal(document.querySelector('button[aria-label="Pausar"]'), null)
   await act(() => [...document.querySelectorAll('button')].find((button) => button.textContent === 'Foco avulso').click())
   await settle()
-  assert.deepEqual(calls, [['POST', '/focus-sessions', JSON.stringify({ taskId: null })]])
+  assert.deepEqual(calls, [['POST', '/focus-sessions', JSON.stringify({ taskId: null, plannedMinutes: 25 })]])
   assert.ok(document.querySelector('button[aria-label="Pausar"]'))
   assert.equal([...document.querySelectorAll('button')].find((button) => button.textContent === 'Foco avulso').disabled, true)
 })
@@ -277,7 +278,7 @@ test('"Foco com tarefa" abre o modal e inicia a sessão com a tarefa e a duraç�
   await act(() => byText('45m').click())
   await act(() => byText('Iniciar Foco').click())
   await settle()
-  assert.deepEqual(calls, [['POST', '/focus-sessions', JSON.stringify({ taskId: 1 })]])
+  assert.deepEqual(calls, [['POST', '/focus-sessions', JSON.stringify({ title: '', plannedMinutes: 45, taskId: 1, projectId: null })]])
   assert.equal(document.querySelector('[role="dialog"]'), null)
   assert.equal(document.querySelector('[role="timer"]').textContent, '45:00')
   assert.ok(document.querySelector('button[aria-label="Pausar"]'))
@@ -313,7 +314,7 @@ test('ao zerar o cronômetro a sessão é concluída e o modal de sessão conclu
   await settle()
   assert.deepEqual(calls, [['PATCH', '/focus-sessions/5', JSON.stringify({ status: 'COMPLETED' })]])
   assert.equal(document.querySelector('[role="dialog"] h2').textContent, 'Sessão concluída')
-  assert.match(document.querySelector('.modal-summary').textContent, /Revisar protótipo/)
+  assert.equal(document.querySelector('#review-task').selectedOptions[0].textContent, 'Revisar protótipo')
 })
 
 test('"Finalizar sessão" conclui antes do tempo e abre o modal de sessão concluída', async () => {
@@ -329,8 +330,108 @@ test('"Finalizar sessão" conclui antes do tempo e abre o modal de sessão concl
   await settle()
   assert.deepEqual(calls, [['PATCH', '/focus-sessions/6', JSON.stringify({ status: 'COMPLETED' })]])
   assert.equal(document.querySelector('[role="dialog"] h2').textContent, 'Sessão concluída')
-  assert.match(document.querySelector('.modal-summary').textContent, /5 minutos/)
+  assert.match(document.querySelector('.modal-summary').textContent, /5m 0\ds/)
   assert.equal([...document.querySelectorAll('button')].some((button) => button.textContent === 'Finalizar sessão'), false)
+})
+
+const buttonNamed = (label) => [...document.querySelectorAll('button')].find((button) => button.textContent === label)
+const click = (button) => act(() => button.click())
+
+for (const status of ['RUNNING', 'PAUSED']) {
+  test(`edição e cancelamento do descarte preservam o relógio em ${status}`, async (t) => {
+    let now = Date.now()
+    t.mock.method(Date, 'now', () => now)
+    const session = {
+      ...focusSession, id: 14, title: 'Revisar', taskId: 7, status, plannedMinutes: 45,
+      startedAt: new Date(now - 60000).toISOString(),
+      pausedAt: status === 'PAUSED' ? new Date(now).toISOString() : null,
+    }
+    const writes = []
+    mockFocusApi([session], (path, options) => {
+      const body = JSON.parse(options.body)
+      writes.push([path, options.method, body])
+      return Response.json({ ...session, ...body })
+    })
+    await openApp()
+    await settle()
+    const discard = () => click(document.querySelector('[aria-label="Descartar sessão"]'))
+    const clock = () => document.querySelector('[role="timer"]').textContent
+    await discard()
+    now += 10000
+    await act(() => new Promise((resolve) => setTimeout(resolve, 1100)))
+    assert.equal(clock(), status === 'PAUSED' ? '44:00' : '43:50')
+    await click(buttonNamed('Manter sessão'))
+    await discard()
+    await act(() => document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape' })))
+    await discard()
+    await act(() => document.querySelector('.modal-overlay').dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true })))
+    assert.equal(document.querySelector('[role="dialog"]'), null)
+    assert.deepEqual(writes, [])
+    await click(document.querySelector('[aria-label="Opções da sessão"]'))
+    await click(buttonNamed('Editar sessão atual'))
+    assert.equal(document.querySelector('#focus-title').value, 'Revisar')
+    assert.equal(document.querySelector('#focus-task').disabled, true)
+    await click(buttonNamed('60m'))
+    await click(buttonNamed('Salvar alterações'))
+    assert.deepEqual(writes, [['/focus-sessions/14', 'PATCH', { title: 'Revisar', plannedMinutes: 60 }]])
+    assert.equal(clock(), status === 'PAUSED' ? '59:00' : '58:50')
+    assert.ok(document.querySelector(status === 'PAUSED' ? '[aria-label="Retomar"]' : '[aria-label="Pausar"]'))
+  })
+}
+
+test('descarte mantém a sessão na falha e remove do histórico após nova tentativa', async () => {
+  const sessions = [{ ...focusSession, id: 8, status: 'PAUSED', plannedMinutes: 45,
+    startedAt: '2026-02-26T09:30:00Z', pausedAt: '2026-02-26T09:33:00Z' }]
+  let attempts = 0
+  mockFocusApi(sessions, (path, options) => {
+    assert.equal(path, '/focus-sessions/8')
+    assert.equal(options.method, 'DELETE')
+    if (++attempts === 1) return new Response(null, { status: 503 })
+    sessions.pop()
+    return new Response(null, { status: 204 })
+  })
+  await openApp()
+  await settle()
+  await click(document.querySelector('[aria-label="Descartar sessão"]'))
+  await click(buttonNamed('Descartar sessão'))
+  assert.ok(document.querySelector('[role="dialog"] [role="alert"]'))
+  assert.equal(document.querySelector('[role="timer"]').textContent, '42:00')
+  await click(buttonNamed('Descartar sessão'))
+  assert.equal(attempts, 2)
+  assert.equal(document.querySelector('[role="timer"]').textContent, '45:00')
+  assert.equal(document.querySelector('[aria-label="Descartar sessão"]').disabled, true)
+  await click(document.querySelector('[aria-label="Opções da sessão"]'))
+  assert.equal(document.querySelector('.timer-menu-list').textContent, 'Ver histórico')
+  await click(document.querySelector('.timer-menu-list a'))
+  await settle()
+  assert.equal(window.location.pathname, '/focus-sessions')
+  assert.match(document.querySelector('.sessions-empty').textContent, /ainda não tem sessões/)
+})
+
+test('falha na revisão permite repetir só a atualização do mesmo registro concluído', async () => {
+  const session = { ...focusSession, id: 15, title: 'Estudar', taskId: 7, status: 'RUNNING',
+    startedAt: new Date(Date.now() - 60000).toISOString() }
+  const writes = []
+  mockFocusApi([session], (path, options) => {
+    assert.equal(path, '/focus-sessions/15')
+    assert.equal(options.method, 'PATCH')
+    const body = JSON.parse(options.body)
+    writes.push(body)
+    if (writes.length === 2) return new Response(null, { status: 503 })
+    if (body.status) Object.assign(session, { status: 'COMPLETED', endedAt: new Date().toISOString() })
+    else session.taskId = null
+    return Response.json(session)
+  })
+  await openApp()
+  await settle()
+  await click(buttonNamed('Finalizar sessão'))
+  const summary = document.querySelector('.modal-summary').textContent
+  await click(buttonNamed('Manter avulsa'))
+  assert.ok(document.querySelector('[role="dialog"] [role="alert"]'))
+  assert.equal(document.querySelector('.modal-summary').textContent, summary)
+  await click(buttonNamed('Manter avulsa'))
+  assert.deepEqual(writes, [{ status: 'COMPLETED' }, { title: 'Estudar', association: {} }, { title: 'Estudar', association: {} }])
+  assert.equal(document.querySelector('[role="dialog"]'), null)
 })
 
 test('marcar uma tarefa do dia como concluída envia PATCH e atualiza o resumo', async () => {

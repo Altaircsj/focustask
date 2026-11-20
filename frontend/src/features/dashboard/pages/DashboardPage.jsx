@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router'
-import { AlarmClock, Award, CircleCheck, Ellipsis, ListTodo, Pause, Play, RefreshCw, SquareCheck, Zap } from 'lucide-react'
+import { Link, useLocation, useNavigate } from 'react-router'
+import { AlarmClock, Award, CircleCheck, ListTodo, Pause, Play, RefreshCw, SquareCheck, Zap } from 'lucide-react'
 import { useAuth } from '../../auth/useAuth'
 import { catalogService, focusSessionService } from '../../focusSessions/focusSessionService'
 import { dashboardService, loadMinutes, saveMinutes } from '../dashboardService'
 import CompletedSessionModal from '../components/CompletedSessionModal'
 import NewFocusModal from '../components/NewFocusModal'
+import EditFocusModal from '../components/EditFocusModal'
+import TimerMenu from '../components/TimerMenu'
+import Modal from '../components/Modal'
 import {
   DEFAULT_MINUTES, currentSession, dailyTasks, firstName, focusNumber, formatClock, formatFocusedTime, greeting, remainingSeconds, summarize,
 } from '../summary'
@@ -23,6 +26,10 @@ export default function DashboardPage() {
   const [modal, setModal] = useState(null)
   const [actionError, setActionError] = useState('')
   const working = useRef(false)
+  const autoFinishAttempt = useRef(null)
+  const location = useLocation()
+  const navigate = useNavigate()
+  const enterNewFocus = useRef(location.state?.newFocus)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -33,6 +40,11 @@ export default function DashboardPage() {
         if (!lists.every(Array.isArray)) throw new Error('A API retornou uma resposta inválida.')
         const [sessions, tasks, projects] = lists
         setData({ status: 'ready', sessions, tasks, projects })
+        if (enterNewFocus.current) {
+          enterNewFocus.current = false
+          if (currentSession(sessions)) setActionError('Você já tem uma sessão em andamento.')
+          else setModal({ type: 'new' })
+        }
       },
     ).catch((error) => { if (!signal.aborted) setData({ status: 'error', message: error.message }) })
     return () => controller.abort()
@@ -40,8 +52,22 @@ export default function DashboardPage() {
 
   const ready = data.status === 'ready'
   const current = ready ? currentSession(data.sessions) : null
-  const remaining = current ? remainingSeconds(current, now, minutes * 60) : minutes * 60
+  const planned = current?.plannedMinutes ?? minutes
+  const remaining = current ? remainingSeconds(current, now, planned * 60) : minutes * 60
   const running = current?.status === 'RUNNING'
+
+  useEffect(() => {
+    if (ready && location.state?.newFocus) navigate('/dashboard', { replace: true, state: null })
+  }, [ready, location.state, navigate])
+
+  function openModal(next) {
+    setActionError('')
+    setModal(next)
+  }
+
+  function closeModal() {
+    if (!working.current) openModal(null)
+  }
 
   async function perform(request, onDone) {
     if (working.current) return
@@ -71,26 +97,35 @@ export default function DashboardPage() {
     setModal({ type: 'done', session })
   }
 
-  // O backend não conhece a duração do ciclo: ao zerar, a sessão é concluída aqui.
+  // Uma falha de conclusão permite nova tentativa pelo botão Finalizar sessão.
   useEffect(() => {
     if (!running) return undefined
     const timer = setInterval(() => {
       const tick = Date.now()
       setNow(tick)
-      if (remainingSeconds(current, tick, minutes * 60) === 0) perform(() => focusSessionService.setStatus(current.id, 'COMPLETED'), finishSession)
+      if (remainingSeconds(current, tick, planned * 60) > 0) {
+        autoFinishAttempt.current = null
+      } else if (!working.current && autoFinishAttempt.current !== current.id) {
+        autoFinishAttempt.current = current.id
+        perform(() => focusSessionService.setStatus(current.id, 'COMPLETED'), finishSession)
+      }
     }, 1000)
     return () => clearInterval(timer)
-  }, [running, current, minutes])
+  }, [running, current, planned])
 
   function toggleTimer() {
-    if (!current) return perform(() => focusSessionService.create(null), saveSession)
+    if (!current) return startFocus({ taskId: null, plannedMinutes: minutes })
     return perform(() => focusSessionService.setStatus(current.id, running ? 'PAUSED' : 'RUNNING'), saveSession)
   }
 
-  function startFocus({ taskId, minutes: chosen }) {
-    setMinutes(chosen)
-    saveMinutes(chosen)
-    perform(() => focusSessionService.create(taskId), (session) => {
+  function rememberMinutes(value) {
+    setMinutes(value)
+    saveMinutes(value)
+  }
+
+  function startFocus(details) {
+    perform(() => focusSessionService.create(details), (session) => {
+      rememberMinutes(details.plannedMinutes)
       saveSession(session)
       setModal(null)
     })
@@ -101,8 +136,41 @@ export default function DashboardPage() {
   }
 
   function discardSession() {
-    if (!window.confirm('Descartar a sessão em andamento? Ela será excluída do histórico.')) return
-    perform(() => focusSessionService.remove(current.id), () => setData((state) => ({ ...state, sessions: state.sessions.filter((item) => item.id !== current.id) })))
+    const { id } = modal.session
+    perform(async () => {
+      try {
+        await focusSessionService.remove(id)
+      } catch (error) {
+        // A previous DELETE may have succeeded before its response was lost.
+        if (error.status !== 404) throw error
+      }
+    }, () => {
+      rememberMinutes(planned)
+      setData((state) => ({ ...state, sessions: state.sessions.filter((item) => item.id !== id) }))
+      setModal(null)
+    })
+  }
+
+  function updateSession(details) {
+    const { id } = modal.session
+    perform(async () => {
+      try {
+        return await focusSessionService.update(id, details)
+      } catch (error) {
+        if (modal.type === 'edit' && error.status === 422) {
+          const latest = await focusSessionService.get(id)
+          if (latest.status === 'COMPLETED') {
+            finishSession(latest)
+            throw new Error('Esta sessão já terminou. Revise os dados da conclusão.')
+          }
+        }
+        throw error
+      }
+    }, (updated) => {
+      if (details.plannedMinutes != null) rememberMinutes(updated.plannedMinutes)
+      saveSession(updated)
+      setModal(null)
+    })
   }
 
   function completeTask(task) {
@@ -163,13 +231,13 @@ export default function DashboardPage() {
               <span className="timer-badge">Foco #{focusNumber(data.sessions, current, now)}{current?.status === 'PAUSED' ? ' · Pausado' : ''}</span>
             </div>
             <div className="timer-controls">
-              <button type="button" className="timer-round" aria-label="Descartar sessão" disabled={!current || busy} onClick={discardSession}>
+                <button type="button" className="timer-round" aria-label="Descartar sessão" disabled={!current || busy} onClick={() => openModal({ type: 'discard', session: current })}>
                 <RefreshCw size={18} aria-hidden="true" />
               </button>
               <button type="button" className="timer-play" aria-label={timerLabel} disabled={busy} onClick={toggleTimer}>
                 {running ? <Pause size={24} aria-hidden="true" /> : <Play size={24} aria-hidden="true" />}
               </button>
-              <Link to="/focus-sessions" className="timer-round" aria-label="Histórico de sessões"><Ellipsis size={18} aria-hidden="true" /></Link>
+              <TimerMenu current={current} onEdit={(session) => openModal({ type: 'edit', session })} />
             </div>
             <div className="timer-actions">
               <button type="button" className="dash-btn" disabled={Boolean(current) || busy} onClick={toggleTimer}>
@@ -180,11 +248,11 @@ export default function DashboardPage() {
                   <CircleCheck size={16} aria-hidden="true" />Finalizar sessão
                 </button>
               )}
-              <button type="button" className="dash-btn dash-btn-primary" disabled={Boolean(current) || busy} onClick={() => setModal({ type: 'new' })}>
+              <button type="button" className="dash-btn dash-btn-primary" disabled={Boolean(current) || busy} onClick={() => openModal({ type: 'new' })}>
                 <SquareCheck size={16} aria-hidden="true" />Foco com tarefa
               </button>
             </div>
-            {actionError && <p role="alert">{actionError}</p>}
+            {!modal && actionError && <p role="alert">{actionError}</p>}
           </section>
 
           <section className="tasks-section" aria-labelledby="daily-tasks">
@@ -215,12 +283,23 @@ export default function DashboardPage() {
       )}
 
       {ready && modal?.type === 'new' && (
-        <NewFocusModal projects={data.projects} tasks={data.tasks} minutes={minutes} busy={busy} onStart={startFocus} onClose={() => setModal(null)} />
+        <NewFocusModal projects={data.projects} tasks={data.tasks} minutes={minutes} busy={busy} error={actionError} onStart={startFocus} onClose={closeModal} />
       )}
-      {ready && modal?.type === 'done' && (() => {
-        const task = data.tasks.find((item) => item.id === modal.session.taskId)
-        return <CompletedSessionModal session={modal.session} task={task} project={task && projects.get(task.projectId)} onClose={() => setModal(null)} />
-      })()}
+      {ready && modal?.type === 'edit' && <EditFocusModal session={modal.session} projects={data.projects} tasks={data.tasks}
+        minutes={minutes} busy={busy} error={actionError} onSave={updateSession} onClose={closeModal} />}
+      {ready && modal?.type === 'done' && <CompletedSessionModal key={modal.session.id} session={modal.session} projects={data.projects}
+        tasks={data.tasks} busy={busy} error={actionError} onSave={updateSession} onClose={closeModal} />}
+      {modal?.type === 'discard' && (
+        <Modal title="Descartar esta sessão de foco?" subtitle="Esta sessão será excluída do histórico." onClose={closeModal}>
+          {actionError && <p role="alert">{actionError}</p>}
+          <div className="modal-actions">
+            <button type="button" className="dash-btn" disabled={busy} onClick={closeModal}>Manter sessão</button>
+            <button type="button" className="dash-btn dash-btn-primary" disabled={busy} onClick={discardSession}>
+              {busy ? 'Descartando…' : 'Descartar sessão'}
+            </button>
+          </div>
+        </Modal>
+      )}
     </main>
   )
 }

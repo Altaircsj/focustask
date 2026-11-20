@@ -2,7 +2,9 @@ import { api } from '../../api/client.js'
 
 export const focusSessionService = {
   list: (signal) => api.request('/focus-sessions', { signal }),
-  create: (taskId, signal) => api.request('/focus-sessions', { method: 'POST', body: { taskId }, signal }),
+  get: (id, signal) => api.request(`/focus-sessions/${id}`, { signal }),
+  create: (body, signal) => api.request('/focus-sessions', { method: 'POST', body, signal }),
+  update: (id, body, signal) => api.request(`/focus-sessions/${id}`, { method: 'PATCH', body, signal }),
   setStatus: (id, status, signal) => api.request(`/focus-sessions/${id}`, { method: 'PATCH', body: { status }, signal }),
   remove: (id, signal) => api.request(`/focus-sessions/${id}`, { method: 'DELETE', signal }),
 }

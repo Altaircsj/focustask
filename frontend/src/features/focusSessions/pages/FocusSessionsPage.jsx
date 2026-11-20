@@ -9,6 +9,7 @@ const FILTERS = [
   { id: 'all', label: 'Todas' },
   { id: 'standalone', label: 'Avulsa' },
   { id: 'task', label: 'Tarefa' },
+  { id: 'project', label: 'Projeto' },
 ]
 const STATUS_LABEL = { RUNNING: 'Em andamento', PAUSED: 'Pausada' }
 
@@ -65,9 +66,11 @@ export default function FocusSessionsPage() {
     return sessions
       .map((session) => {
         const task = session.taskId == null ? null : tasks.get(session.taskId) ?? null
-        return { session, task, project: task ? projects.get(task.projectId) ?? null : null }
+        const type = session.taskId != null ? 'task' : session.projectId != null ? 'project' : 'standalone'
+        const project = projects.get(task?.projectId ?? session.projectId)
+        return { session, task, project, type }
       })
-      .filter(({ session }) => filter === 'all' || (filter === 'standalone') === (session.taskId == null))
+      .filter(({ type }) => filter === 'all' || filter === type)
       .sort((a, b) => Date.parse(b.session.startedAt) - Date.parse(a.session.startedAt))
   }, [data.projects, data.tasks, filter, sessions])
 
@@ -130,6 +133,7 @@ export default function FocusSessionsPage() {
                 <tr>
                   <th scope="col" className="col-date">Data &amp; Hora</th>
                   <th scope="col" className="col-duration">Duração</th>
+                  <th scope="col">Título</th>
                   <th scope="col">Tarefa</th>
                   <th scope="col" className="col-project">Projeto</th>
                   <th scope="col" className="col-type">Tipo</th>
@@ -137,18 +141,19 @@ export default function FocusSessionsPage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map(({ session, task, project }) => (
+                {rows.map(({ session, task, project, type }) => (
                   <tr key={session.id}>
                     <td>{formatStartedAt(session.startedAt, new Date(now))}</td>
                     <td>
                       {formatDuration(activeSeconds(session, now))}
                       {session.status !== 'COMPLETED' && <span className="session-status">{STATUS_LABEL[session.status]}</span>}
                     </td>
+                    <td>{session.title || '—'}</td>
                     <td className={task ? undefined : 'muted'}>{task?.title ?? '—'}</td>
                     <td className={`col-project${project ? '' : ' muted'}`}>{project?.name ?? '—'}</td>
                     <td>
-                      <span className={`badge ${session.taskId == null ? 'badge-standalone' : 'badge-task'}`}>
-                        {session.taskId == null ? 'Avulsa' : 'Tarefa'}
+                      <span className={`badge badge-${type}`}>
+                        {FILTERS.find((item) => item.id === type).label}
                       </span>
                     </td>
                     <td className="col-actions">

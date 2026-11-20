@@ -138,5 +138,13 @@
 .dashboard-page .modal-error { margin: 0; color: #ef4444; font-size: 12px; }
 .modal-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; }
 .modal-summary { display: flex; flex-direction: column; gap: 16px; margin: 20px 0; }
+.focus-fields { border: 0; padding: 0; margin: 0; min-width: 0; }
+.locked-field { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; color: var(--text); background: var(--surface); }
+.locked-field input { flex: 1; min-width: 0; border: 0; background: transparent; color: inherit; font: inherit; }
+.modal-card [role="alert"] { margin-bottom: 12px; }
+.timer-menu { position: relative; }
+.timer-menu-list { position: absolute; z-index: 2; right: 0; top: calc(100% + 6px); min-width: 168px; padding: 4px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); box-shadow: 0 5px 16px #0002; }
+.timer-menu-list button, .timer-menu-list a { display: block; width: 100%; padding: 10px 12px; box-sizing: border-box; border: 0; border-radius: 6px; background: transparent; color: var(--text-h); text-align: left; font: inherit; cursor: pointer; }
+.timer-menu-list :is(a, button):is(:hover, :focus-visible) { background: var(--brand-bg); }
 .modal-summary dt { margin-bottom: 4px; font-size: 13px; font-weight: 600; }
 .modal-summary dd { margin: 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; color: var(--text); }

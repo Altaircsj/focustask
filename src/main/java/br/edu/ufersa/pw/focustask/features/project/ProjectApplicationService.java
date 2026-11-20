@@ -63,6 +63,7 @@ class ProjectApplicationService {
         List<Long> projectIds = List.of(projectId);
         List<Long> taskIds = tasks.listarIdsPorProjetos(userId, projectIds);
         sessions.desvincularDeTarefas(userId, taskIds);
+        sessions.desvincularDeProjeto(userId, projectId);
         tasks.excluirPorProjetos(userId, projectIds);
         repository.deleteById(projectId);
         repository.flush();

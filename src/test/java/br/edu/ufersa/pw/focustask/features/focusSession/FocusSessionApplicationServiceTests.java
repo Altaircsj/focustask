@@ -4,6 +4,7 @@ import br.edu.ufersa.pw.focustask.shared.exception.OperacaoInvalidaException;
 import br.edu.ufersa.pw.focustask.shared.exception.EntidadeNaoEncontradaException;
 import br.edu.ufersa.pw.focustask.features.task.TaskInternalApi;
 import br.edu.ufersa.pw.focustask.features.user.UserInternalApi;
+import br.edu.ufersa.pw.focustask.features.project.ProjectInternalApi;
 import org.junit.jupiter.api.Test;
 import br.edu.ufersa.pw.focustask.features.focusSession.dto.*;
 import java.time.Clock;
@@ -18,7 +19,8 @@ class FocusSessionApplicationServiceTests {
     private final UserInternalApi users = mock(UserInternalApi.class);
     private final TaskInternalApi tasks = mock(TaskInternalApi.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-09-17T12:00:00Z"), ZoneOffset.UTC);
-    private final FocusSessionApplicationService service = new FocusSessionApplicationService(repository, new FocusSessionMapperImpl(), new FocusSessionService(tasks), users, tasks, clock);
+    private final ProjectInternalApi projects = mock(ProjectInternalApi.class);
+    private final FocusSessionApplicationService service = new FocusSessionApplicationService(repository, new FocusSessionMapperImpl(), new FocusSessionService(tasks, projects), users, tasks, clock);
 
     @Test
     void validatesUserAndTaskBeforeCreating() {
@@ -67,6 +69,34 @@ class FocusSessionApplicationServiceTests {
         assertEquals(FocusSessionStatus.COMPLETED, session.getStatus());
         assertEquals(clock.instant(), session.getEndedAt());
         verifyNoInteractions(tasks);
+    }
+
+    @Test
+    void editsPausedPlanAndReviewsCompletedProjectWithoutChangingRecordedTime() {
+        FocusSession session = new FocusSession(1L, Clock.offset(clock, java.time.Duration.ofSeconds(-120)));
+        session.pause(clock);
+        when(repository.findForUpdate(8L, 1L)).thenReturn(Optional.of(session));
+        when(projects.pertenceAoUsuario(1L, 3L)).thenReturn(true);
+        var project = new FocusSessionAssociationDTO(null, 3L);
+        assertThrows(OperacaoInvalidaException.class, () -> service.patch(1L, 8L,
+                new FocusSessionPatchDTO(null, null, null, 2, null)));
+
+        var edited = service.patch(1L, 8L, new FocusSessionPatchDTO(null, null, " Revisão ", 45, project));
+        assertEquals(45, edited.plannedMinutes());
+        assertEquals(3L, edited.projectId());
+        assertEquals("Revisão", edited.title());
+        assertEquals(clock.instant(), edited.pausedAt());
+        assertEquals(FocusSessionStatusDTO.PAUSED, edited.status());
+        var finished = service.patch(1L, 8L, new FocusSessionPatchDTO(null, FocusSessionStatusDTO.COMPLETED));
+        var reviewed = service.patch(1L, 8L, new FocusSessionPatchDTO(null, null, "",
+                null, new FocusSessionAssociationDTO(null, null)));
+        assertNull(reviewed.title());
+        assertNull(reviewed.projectId());
+        assertNull(reviewed.taskId());
+        assertEquals(finished.startedAt(), reviewed.startedAt());
+        assertEquals(finished.endedAt(), reviewed.endedAt());
+        assertEquals(finished.totalPausedSeconds(), reviewed.totalPausedSeconds());
+        assertEquals(FocusSessionStatusDTO.COMPLETED, reviewed.status());
     }
 
     @Test

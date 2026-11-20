@@ -27,6 +27,11 @@ interface FocusSessionRepository extends JpaRepository<FocusSession, Long> {
 
     @Transactional(propagation = Propagation.MANDATORY)
     @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("update FocusSession s set s.projectId = null where s.userId = :userId and s.projectId = :projectId")
+    int detachFromProject(@Param("userId") Long userId, @Param("projectId") Long projectId);
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("delete from FocusSession s where s.userId = :userId")
     int deleteAllForUser(@Param("userId") Long userId);
 }

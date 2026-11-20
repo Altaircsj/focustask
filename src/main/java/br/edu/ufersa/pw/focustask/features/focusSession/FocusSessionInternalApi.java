@@ -8,4 +8,6 @@ public interface FocusSessionInternalApi {
 
     /** Requires an existing transaction coordinated by the user deletion service. */
     void excluirPorUsuario(Long userId);
+
+    void desvincularDeProjeto(Long userId, Long projectId);
 }

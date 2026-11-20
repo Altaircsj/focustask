@@ -1,6 +1,7 @@
 package br.edu.ufersa.pw.focustask.features.focusSession;
 
 import br.edu.ufersa.pw.focustask.shared.exception.EntidadeNaoEncontradaException;
+import br.edu.ufersa.pw.focustask.shared.exception.OperacaoInvalidaException;
 import br.edu.ufersa.pw.focustask.features.focusSession.dto.*;
 import br.edu.ufersa.pw.focustask.features.user.UserInternalApi;
 import br.edu.ufersa.pw.focustask.features.task.TaskInternalApi;
@@ -48,26 +49,25 @@ class FocusSessionApplicationService {
 
     @Transactional
     public FocusSessionResponseDTO create(Long userId, FocusSessionCreateDTO dto) {
-        return createSession(userId, dto.taskId());
+        requireUser(userId);
+        domain.validarVinculo(userId, dto.taskId(), dto.projectId());
+        FocusSession session = new FocusSession(userId, clock);
+        if (dto.projectId() != null) session.setDirectProject(dto.projectId());
+        else session.setTaskId(dto.taskId());
+        session.setTitle(dto.title());
+        if (dto.plannedMinutes() != null) session.planDuration(dto.plannedMinutes(), clock);
+        return mapper.toResponse(repository.save(session));
     }
 
     @Transactional
     public FocusSessionResponseDTO createForTask(Long userId, Long taskId) {
-        return createSession(userId, taskId);
-    }
-
-    private FocusSessionResponseDTO createSession(Long userId, Long taskId) {
-        requireUser(userId);
-        domain.validarVinculo(userId, taskId);
-        FocusSession session = new FocusSession(userId, clock);
-        session.setTaskId(taskId);
-        return mapper.toResponse(repository.save(session));
+        return create(userId, new FocusSessionCreateDTO(taskId));
     }
 
     @Transactional
     public FocusSessionResponseDTO update(Long userId, Long sessionId, FocusSessionUpdateDTO dto) {
         FocusSession session = forUpdate(userId, sessionId);
-        domain.validarVinculo(userId, dto.taskId());
+        domain.validarVinculo(userId, dto.taskId(), null);
         changeStatus(session, dto.status());
         session.setTaskId(dto.taskId());
         return mapper.toResponse(session);
@@ -76,9 +76,19 @@ class FocusSessionApplicationService {
     @Transactional
     public FocusSessionResponseDTO patch(Long userId, Long sessionId, FocusSessionPatchDTO dto) {
         FocusSession session = forUpdate(userId, sessionId);
-        if (dto.taskId() != null) domain.validarVinculo(userId, dto.taskId());
+        FocusSessionAssociationDTO association = dto.association();
+        if (dto.taskId() != null && association != null) {
+            throw new OperacaoInvalidaException("Envie apenas uma associação.");
+        }
+        if (dto.taskId() != null) association = new FocusSessionAssociationDTO(dto.taskId(), null);
+        if (association != null) domain.validarVinculo(userId, association.taskId(), association.projectId());
         if (dto.status() != null) changeStatus(session, dto.status());
-        if (dto.taskId() != null) session.setTaskId(dto.taskId());
+        if (dto.plannedMinutes() != null) session.planDuration(dto.plannedMinutes(), clock);
+        if (dto.title() != null) session.setTitle(dto.title());
+        if (association != null) {
+            if (association.taskId() != null) session.setTaskId(association.taskId());
+            else session.setDirectProject(association.projectId());
+        }
         return mapper.toResponse(session);
     }
 
