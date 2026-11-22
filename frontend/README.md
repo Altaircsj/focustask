@@ -2,7 +2,7 @@
 
 React, JavaScript, Vite e React Router. Cadastro e login usam a API real; o painel
 mostra saudação, resumo do dia, cronômetro de foco e tarefas do dia. As sessões de foco têm histórico e criação
-com a API real. Os detalhes de uma tarefa (`/tasks/:taskId`) já funcionam. Projetos, lista de tarefas e perfil estão protegidos, mas seus CRUDs ainda não
+com a API real. Os detalhes de uma tarefa (`/tasks/:taskId`) e o perfil já funcionam. Projetos e lista de tarefas estão protegidos, mas seus CRUDs ainda não
 foram implementados.
 
 ## Ambiente local
@@ -118,6 +118,11 @@ este trabalho. Não houve deploy ou teste do serviço remoto.
 | `src/features/tasks/taskService.js` | `GET`, `PATCH` e `DELETE` de `/tasks/{id}` |
 | `src/features/tasks/format.js` | Rótulos de status e prioridade e formatação do prazo |
 | `src/features/tasks/tasks.css` | Estilos específicos dos detalhes da tarefa |
+| `src/features/profile/pages/ProfilePage.jsx` | Perfil em `/profile`: edita nome e e-mail, exclui a conta; senha desabilitada (a API não tem troca de senha) |
+| `src/features/profile/profileService.js` | `PATCH` e `DELETE` de `/me` |
+| `src/features/profile/validation.js` | Validação do formulário e mensagens de erro do perfil |
+| `src/features/profile/profile.css` | Estilos específicos do perfil |
+| `src/layouts/initials.js` | Iniciais do nome, usadas no menu lateral e no perfil |
 | `src/features/focusSessions/focusSessionService.js`, `format.js` | Chamadas à API e cálculo/formatação da duração (descontando pausas) |
 | `src/features/focusSessions/focus-sessions.css` | Estilos das duas páginas de sessões |
 | `src/layouts/AppLayout.jsx`, `src/layouts/app-layout.css` | Estrutura das rotas autenticadas: menu lateral à esquerda e a página (`Outlet`) ao lado |

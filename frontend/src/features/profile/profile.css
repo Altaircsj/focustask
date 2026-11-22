@@ -1,0 +1,31 @@
+.profile-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.profile-header p { margin-top: 4px; color: var(--text); }
+.profile-card { width: 100%; max-width: 640px; padding: 32px; box-sizing: border-box; border: 1px solid var(--border); border-radius: 16px; background: var(--bg); }
+.profile-identity { display: flex; align-items: center; gap: 20px; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
+.profile-avatar { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 80px; height: 80px; border-radius: 50%; background: var(--brand-bg); color: var(--brand); font-size: 28px; font-weight: 700; }
+.dashboard-page .profile-name { color: var(--text-h); font-size: 18px; font-weight: 700; }
+.dashboard-page .profile-email { margin-top: 2px; color: var(--text); }
+.profile-section { display: flex; flex-direction: column; gap: 16px; min-width: 0; margin: 0; padding: 24px 0; border: 0; border-bottom: 1px solid var(--border); }
+.profile-section h2 { margin: 0; color: var(--text-h); font-size: 16px; font-weight: 700; }
+.profile-section .form-field { margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.dashboard-page .profile-section .modal-note { margin: 0; }
+.profile-section label { margin: 0; color: var(--text-h); font-size: 13px; font-weight: 600; }
+.profile-section .chip-input { width: 100%; box-sizing: border-box; }
+.profile-section:disabled .chip-input { background: color-mix(in srgb, var(--text) 8%, var(--bg)); cursor: not-allowed; }
+.profile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.dashboard-page .profile-ok { margin-top: 12px; color: #10b981; font-weight: 600; }
+.profile-card > form .profile-section { border-bottom: 1px solid var(--border); }
+.profile-card > form > [role="alert"] { margin-top: 12px; }
+.profile-danger { padding-top: 24px; }
+.profile-danger h2 { margin-bottom: 16px; color: #ef4444; font-size: 16px; }
+.danger-box { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px; border: 1px solid color-mix(in srgb, #ef4444 40%, transparent); border-radius: 10px; background: color-mix(in srgb, #ef4444 8%, var(--bg)); }
+.dashboard-page .danger-title { color: #ef4444; font-size: 13px; font-weight: 700; }
+.dashboard-page .danger-text { margin-top: 2px; color: var(--text); font-size: 12px; }
+.dash-btn-solid-danger { white-space: nowrap; border-color: #ef4444; background: #ef4444; color: #fff; }
+.dash-btn-solid-danger:focus-visible { outline: 2px solid #ef4444; outline-offset: 2px; }
+@media (max-width: 768px) {
+  .profile-card { padding: 20px; }
+  .profile-grid { grid-template-columns: 1fr; }
+  .profile-header,
+  .danger-box { flex-direction: column; align-items: stretch; }
+}

@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router'
 import { AlarmClock, Folder, LayoutDashboard, ListCheck, Timer, User } from 'lucide-react'
 import { useAuth } from '../../features/auth/useAuth'
+import { getInitials } from '../initials'
 import './sidebar.css'
 
 const navItems = [
@@ -10,14 +11,6 @@ const navItems = [
   { to: '/focus-sessions', label: 'Sessões', icon: Timer },
   { to: '/profile', label: 'Perfil', icon: User },
 ]
-
-function getInitials(name) {
-  const words = name.trim().split(/\s+/).filter(Boolean)
-  if (words.length === 0) return '?'
-  const first = words[0][0]
-  const last = words.length > 1 ? words[words.length - 1][0] : ''
-  return (first + last).toUpperCase()
-}
 
 export default function SideBar() {
   const { user } = useAuth()

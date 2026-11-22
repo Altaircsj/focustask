@@ -5,6 +5,7 @@ import RegisterPage from '../features/auth/pages/RegisterPage'
 import { useAuth } from '../features/auth/useAuth'
 import DashboardPage from '../features/dashboard/pages/DashboardPage'
 import FocusSessionsPage from '../features/focusSessions/pages/FocusSessionsPage'
+import ProfilePage from '../features/profile/pages/ProfilePage'
 import TaskDetailPage from '../features/tasks/pages/TaskDetailPage'
 import NewFocusSessionPage from '../features/focusSessions/pages/NewFocusSessionPage'
 
@@ -27,7 +28,7 @@ export default function AppRoutes() {
         <Route path="/tasks/:taskId" element={<TaskDetailPage />} />
         <Route path="/focus-sessions" element={<FocusSessionsPage />} />
         <Route path="/focus-sessions/new" element={<NewFocusSessionPage />} />
-        <Route path="/profile" element={<PlaceholderPage titulo="Perfil" />} />
+        <Route path="/profile" element={<ProfilePage />} />
       </Route>
       <Route path="*" element={<main className="auth-card"><h1>Página não encontrada</h1><Link to="/">Ir ao início</Link></main>} />
     </Routes>

@@ -590,3 +590,90 @@ test('uma tarefa inexistente mostra o aviso e o caminho de volta', async () => {
   assert.match(document.querySelector('[role="alert"]').textContent, /Tarefa não encontrada/)
   assert.equal(document.querySelector('a[href="/tasks"].dash-btn').textContent, 'Voltar às tarefas')
 })
+
+function mockProfileApi(onOther) {
+  sessionStorage.setItem(tokenKey, 'valido')
+  fetch.mock.mockImplementation((url, options = {}) => {
+    const path = url.replace('http://api.test/api/v1', '')
+    if (path === '/me' && options.method === 'GET') return Response.json(user)
+    return onOther(path, options)
+  })
+}
+
+// O React deste ambiente só observa digitação pelo caminho de foco + tecla.
+async function typeInto(selector, value) {
+  // O caminho de compatibilidade do React chama attachEvent/detachEvent, que o jsdom não tem.
+  window.HTMLElement.prototype.attachEvent ??= () => {}
+  window.HTMLElement.prototype.detachEvent ??= () => {}
+  await act(() => {
+    const input = document.querySelector(selector)
+    input.dispatchEvent(new window.FocusEvent('focusin', { bubbles: true }))
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(input, value)
+    input.dispatchEvent(new window.KeyboardEvent('keyup', { bubbles: true }))
+    input.dispatchEvent(new window.FocusEvent('focusout', { bubbles: true }))
+  })
+}
+
+test('o perfil só habilita salvar após mudar, envia só o campo alterado e atualiza o menu', async () => {
+  const calls = []
+  mockProfileApi((path, options) => {
+    calls.push([options.method, path, options.body])
+    return Response.json({ ...user, name: 'Novo Nome' })
+  })
+  window.history.pushState({}, '', '/profile')
+  await openApp()
+  await settle()
+  const save = () => [...document.querySelectorAll('button')].find((button) => button.textContent === 'Salvar Alterações')
+  assert.equal(document.querySelector('h1').textContent, 'Perfil')
+  assert.equal(document.querySelector('#profile-name').value, 'Conta de teste')
+  assert.equal(save().disabled, true)
+  assert.equal(document.querySelector('#new-password').matches(':disabled'), true)
+  await typeInto('#profile-name', 'Novo Nome')
+  assert.equal(save().disabled, false)
+  await act(() => save().click())
+  await settle()
+  assert.deepEqual(calls, [['PATCH', '/me', JSON.stringify({ name: 'Novo Nome' })]])
+  assert.match(document.querySelector('[role="status"]').textContent, /Alterações salvas/)
+  assert.match(document.querySelector('.sidebar').textContent, /Novo Nome/)
+  assert.equal(save().disabled, true)
+})
+
+test('o perfil recusa nome em branco e mostra o conflito de e-mail da API', async () => {
+  const calls = []
+  mockProfileApi((path, options) => {
+    calls.push([options.method, path])
+    return Response.json({ message: 'conflict' }, { status: 409 })
+  })
+  window.history.pushState({}, '', '/profile')
+  await openApp()
+  await settle()
+  const save = () => [...document.querySelectorAll('button')].find((button) => button.textContent === 'Salvar Alterações')
+  await typeInto('#profile-name', '   ')
+  await act(() => save().click())
+  assert.match(document.querySelector('#profile-name-error').textContent, /nome com até 255/)
+  assert.equal(calls.length, 0)
+  await typeInto('#profile-name', 'Outro Nome')
+  await act(() => save().click())
+  await settle()
+  assert.match(document.querySelector('[role="alert"]').textContent, /já está em uso/)
+})
+
+test('excluir a conta pede confirmação, envia DELETE /me e volta ao login', async () => {
+  const calls = []
+  mockProfileApi((path, options) => {
+    calls.push([options.method, path])
+    return new Response(null, { status: 204 })
+  })
+  window.history.pushState({}, '', '/profile')
+  await openApp()
+  await settle()
+  const byText = (text) => [...document.querySelectorAll('button')].find((button) => button.textContent === text)
+  await act(() => byText('Excluir Conta').click())
+  assert.equal(document.querySelector('[role="dialog"] h2').textContent, 'Excluir sua conta?')
+  assert.equal(calls.length, 0)
+  await act(() => byText('Excluir conta').click())
+  await settle()
+  assert.deepEqual(calls, [['DELETE', '/me']])
+  assert.equal(sessionStorage.getItem(tokenKey), null)
+  assert.equal(window.location.pathname, '/login')
+})

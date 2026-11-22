@@ -48,6 +48,8 @@ export function AuthProvider({ children }) {
     }
   }, [cancelPending, logout, restore])
 
+  const updateUser = useCallback((user) => setSession((current) => (current.user ? { ...current, user } : current)), [])
+
   async function login(credentials) {
     cancelPending()
     const controller = new AbortController()
@@ -79,7 +81,7 @@ export function AuthProvider({ children }) {
   )
 
   return (
-    <AuthContext.Provider value={{ user: session.user, notice: session.notice, login, logout, cancelPending }}>
+    <AuthContext.Provider value={{ user: session.user, notice: session.notice, login, logout, updateUser, cancelPending }}>
       {children}
     </AuthContext.Provider>
   )
