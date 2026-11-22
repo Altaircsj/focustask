@@ -8,6 +8,8 @@ import java.util.Locale;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+// Profile edits must never flush an older credential hash/version over a password change.
+@org.hibernate.annotations.DynamicUpdate
 @Entity
 @Table(name = "users", uniqueConstraints = @UniqueConstraint(name = "uk_users_email", columnNames = "email"))
 class User {
@@ -31,6 +33,9 @@ class User {
     @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;
 
+    @Column(name = "credential_version", nullable = false)
+    private long credentialVersion;
+
     @jakarta.validation.constraints.NotNull
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.VARCHAR)
@@ -51,10 +56,17 @@ class User {
     User copy() {
         User copy = new User(name, email, passwordHash);
         copy.role = role;
+        copy.credentialVersion = credentialVersion;
         return copy;
     }
 
     String getPasswordHash() { return passwordHash; }
+    long getCredentialVersion() { return credentialVersion; }
+
+    void changePasswordHash(String encodedPassword) {
+        this.passwordHash = encodedPassword;
+        this.credentialVersion = Math.incrementExact(credentialVersion);
+    }
     UserRole getRole() { return role; }
     static String normalizeEmail(String email) { return email.strip().toLowerCase(Locale.ROOT); }
 

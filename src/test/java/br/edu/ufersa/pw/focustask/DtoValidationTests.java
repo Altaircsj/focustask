@@ -51,6 +51,10 @@ class DtoValidationTests {
                 new TaskPatchDTO(null, null, null, null, null, null),
                 new TaskPatchDTO(2L, "T", "", TaskStatusDTO.IN_PROGRESS, TaskPriorityDTO.LOW, past),
                 new FocusSessionCreateDTO(null), new FocusSessionCreateDTO(1L),
+                new FocusSessionCreateDTO(null, null, null, 240),
+                new FocusSessionPatchDTO(null, null, null, 240, null),
+                new FocusSessionCreateDTO(null, null, null, 240),
+                new FocusSessionPatchDTO(null, null, null, 240, null),
                 new FocusSessionUpdateDTO(null, FocusSessionStatusDTO.COMPLETED),
                 new FocusSessionPatchDTO(null, null), new FocusSessionPatchDTO(1L, FocusSessionStatusDTO.PAUSED));
     }
@@ -91,6 +95,10 @@ class DtoValidationTests {
                 Arguments.of(new TaskPatchDTO(-1L, null, null, null, null, null), "projectId"),
                 Arguments.of(new TaskPatchDTO(null, " \t\n", null, null, null, null), "title"),
                 Arguments.of(new FocusSessionCreateDTO(0L), "taskId"),
+                Arguments.of(new FocusSessionCreateDTO(null, null, null, 241), "plannedMinutes"),
+                Arguments.of(new FocusSessionPatchDTO(null, null, null, 241, null), "plannedMinutes"),
+                Arguments.of(new FocusSessionCreateDTO(null, null, null, 241), "plannedMinutes"),
+                Arguments.of(new FocusSessionPatchDTO(null, null, null, 241, null), "plannedMinutes"),
                 Arguments.of(new FocusSessionUpdateDTO(null, null), "status"),
                 Arguments.of(new FocusSessionUpdateDTO(-1L, FocusSessionStatusDTO.RUNNING), "taskId"),
                 Arguments.of(new FocusSessionPatchDTO(-1L, null), "taskId"));

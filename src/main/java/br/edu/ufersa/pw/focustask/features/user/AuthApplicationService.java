@@ -4,6 +4,7 @@ import br.edu.ufersa.pw.focustask.features.user.dto.*;
 import br.edu.ufersa.pw.focustask.shared.security.AuthenticatedUser;
 import br.edu.ufersa.pw.focustask.shared.security.TokenService;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -31,6 +32,18 @@ class AuthApplicationService {
         String email = User.normalizeEmail(dto.email());
         domain.validarCriacao(email);
         repository.save(new User(dto.name(), email, encoder.encode(dto.password())));
+    }
+
+    @Transactional
+    public void changePassword(Long id, long authenticatedVersion, ChangePasswordRequestDTO dto) {
+        User user = repository.findForPasswordChange(id).orElseThrow(() -> new BadCredentialsException("Invalid session"));
+        if (user.getCredentialVersion() != authenticatedVersion) {
+            throw new BadCredentialsException("Invalid session");
+        }
+        if (!encoder.matches(dto.currentPassword(), user.getPasswordHash())) {
+            throw new IncorrectCurrentPasswordException();
+        }
+        user.changePasswordHash(encoder.encode(dto.newPassword()));
     }
 
     public TokenResponseDTO login(LoginRequestDTO dto) {

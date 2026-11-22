@@ -1,10 +1,16 @@
+export function passwordError(password, isNew = false) {
+  if (!/\S/u.test(password)) return 'Informe sua senha.'
+  if (isNew && password.length < 6) return 'A senha deve ter pelo menos 6 caracteres.'
+  if (new TextEncoder().encode(password).length > 72) return 'A senha deve ter no máximo 72 bytes UTF-8. Acentos e emojis podem ocupar mais de um byte.'
+  return ''
+}
+
 export function validateAuth(values, register = false) {
   const errors = {}
   if (register && (!values.name.trim() || values.name.length > 255)) errors.name = 'Informe um nome com até 255 caracteres.'
   if (!values.email.trim() || values.email.length > 254 || !/^[^\s@]+@[^\s@]+$/.test(values.email)) errors.email = 'Informe um e-mail válido com até 254 caracteres.'
-  if (!values.password.trim()) errors.password = 'Informe sua senha.'
-  else if (register && values.password.length < 6) errors.password = 'A senha deve ter pelo menos 6 caracteres.'
-  else if (new TextEncoder().encode(values.password).length > 72) errors.password = 'A senha deve ter no máximo 72 bytes UTF-8. Acentos e emojis podem ocupar mais de um byte.'
+  const invalidPassword = passwordError(values.password, register)
+  if (invalidPassword) errors.password = invalidPassword
   return errors
 }
 

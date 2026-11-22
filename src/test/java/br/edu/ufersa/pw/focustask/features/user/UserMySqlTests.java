@@ -13,6 +13,32 @@ class UserMySqlTests extends MySqlIntegrationTest {
     @org.springframework.test.context.bean.override.mockito.MockitoSpyBean UserRepository repository;
 
     @Test
+    void concurrentChangesUsingTheSameCredentialsCanOnlyCommitOnce() throws Exception {
+        long id = user("change@example.com");
+        var start = new java.util.concurrent.CyclicBarrier(2);
+        var dto = new ChangePasswordRequestDTO("secret12", " nova senha ");
+        try (var pool = java.util.concurrent.Executors.newFixedThreadPool(2)) {
+            java.util.concurrent.Callable<Boolean> change = () -> {
+                start.await(10, java.util.concurrent.TimeUnit.SECONDS);
+                try {
+                    auth.changePassword(id, 0, dto);
+                    return true;
+                } catch (org.springframework.security.authentication.BadCredentialsException stale) {
+                    return false;
+                }
+            };
+            var first = pool.submit(change);
+            var second = pool.submit(change);
+            assertNotEquals(first.get(15, java.util.concurrent.TimeUnit.SECONDS),
+                    second.get(15, java.util.concurrent.TimeUnit.SECONDS));
+        }
+        User updated = repository.findById(id).orElseThrow();
+        assertEquals(1, updated.getCredentialVersion());
+        assertTrue(new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder()
+                .matches(dto.newPassword(), updated.getPasswordHash()));
+    }
+
+    @Test
     void deletingUserRemovesAllOwnedDataIncludingStandaloneSessions() {
         long owner = user("owner@example.com");
         long ownedProject = project(owner);

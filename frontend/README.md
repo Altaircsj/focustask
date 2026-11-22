@@ -103,7 +103,7 @@ este trabalho. Não houve deploy ou teste do serviço remoto.
 | `src/features/auth/auth.css` | Estilos específicos dos formulários de autenticação |
 | `src/features/auth/validation.js` | Limites dos DTOs, incluindo 72 bytes UTF-8 |
 | `src/routes/AppRoutes.jsx` | Rotas públicas e grupo de páginas que exigem usuário autenticado |
-| `src/features/dashboard/pages/DashboardPage.jsx` | Painel: resumo, cronômetro (25 min) e tarefas do dia |
+| `src/features/dashboard/pages/DashboardPage.jsx` | Painel com resumo, cronômetro de 25 minutos por padrão e tarefas do dia |
 | `src/features/dashboard/components/Modal.jsx` | Diálogo base (Esc e clique fora fecham) |
 | `src/features/dashboard/components/NewFocusModal.jsx` | Modal "Nova Sessão de Foco": projeto, tarefa e duração |
 | `src/features/dashboard/components/CompletedSessionModal.jsx` | Modal "Sessão concluída" ao zerar o cronômetro |
@@ -126,8 +126,8 @@ este trabalho. Não houve deploy ou teste do serviço remoto.
 | `src/features/tasks/taskService.js` | `GET`, `PATCH` e `DELETE` de `/tasks/{id}` e criação em `/projects/{id}/tasks` |
 | `src/features/tasks/format.js` | Rótulos de status e prioridade e formatação do prazo |
 | `src/features/tasks/tasks.css` | Estilos específicos dos detalhes da tarefa |
-| `src/features/profile/pages/ProfilePage.jsx` | Perfil em `/profile`: edita nome e e-mail, exclui a conta; senha desabilitada (a API não tem troca de senha) |
-| `src/features/profile/profileService.js` | `PATCH` e `DELETE` de `/me` |
+| `src/features/profile/pages/ProfilePage.jsx` | Edição de nome e e-mail, troca de senha e exclusão da conta em `/profile` |
+| `src/features/profile/profileService.js` | `PATCH` e `DELETE` de `/me`, além de `PUT /me/password` |
 | `src/features/profile/validation.js` | Validação do formulário e mensagens de erro do perfil |
 | `src/features/profile/profile.css` | Estilos específicos do perfil |
 | `src/layouts/initials.js` | Iniciais do nome, usadas no menu lateral e no perfil |
@@ -138,7 +138,7 @@ este trabalho. Não houve deploy ou teste do serviço remoto.
 
 O token fica no `sessionStorage` da aba, na chave `focustask.token`. O usuário
 fica em memória. Ao iniciar, `useEffect` verifica `/me` antes de liberar as rotas.
-O login só armazena o token depois dessa verificação. O JWT dura 15 minutos;
+O login só armazena o token depois dessa verificação. O JWT dura 12 horas e
 qualquer 401 autenticado limpa a sessão e pede novo login. Não há refresh token
 ou logout no servidor; Sair limpa a sessão local. Uma requisição que ultrapassar
 15 segundos é tratada como indisponibilidade, sem apagar o token salvo.
@@ -147,6 +147,22 @@ Falhas de conexão e respostas diferentes de 401 durante a recuperação preserv
 o token e exibem Tentar novamente. Os efeitos cancelam requisições e invalidam
 respostas antigas no logout/desmonte, inclusive no StrictMode. Um 401 atrasado
 com token de sessão anterior não remove um token novo.
+
+### Alterar a senha pelo Perfil
+
+Em **Perfil → Alterar Senha**, informe a senha atual, a nova senha e a confirmação.
+Use **Alterar senha** para enviar. **Salvar Alterações** pertence ao formulário de nome e e-mail.
+A nova senha deve ter pelo menos 6 caracteres e ocupar até 72 bytes em UTF-8.
+O React confere a confirmação antes de enviar `currentPassword` e `newPassword`
+para `PUT /api/v1/me/password`. Se a senha atual estiver incorreta, o erro aparece
+no campo e a sessão continua aberta. Após o sucesso, o aplicativo volta ao login
+e pede a nova senha. Os tokens emitidos antes da troca também perdem a validade nas outras abas.
+
+### Escolher a duração de um foco
+
+Ao criar ou editar uma sessão pelo Painel, escolha **15, 25, 45, 60, 90, 120 ou 240 minutos**.
+Em **Personalizado**, informe um número inteiro de 1 a 240. Na edição, a duração
+planejada precisa superar o tempo já trabalhado.
 
 ## Verificação
 

@@ -10,12 +10,13 @@ as APIs `*InternalApi` expõem apenas IDs, DTOs e operações necessárias.
 Os quatro Application Services coordenam os casos de uso, os mappers, a
 persistência e as transações. Controllers dependem somente da aplicação local.
 
-A API possui 28 endpoints, autenticação JWT stateless e RBAC mínimo. GET, PUT e
-PATCH retornam 200 com DTOs; criações de recursos retornam 201 com corpo e Location;
-DELETE retorna 204 sem corpo. Registro retorna 201 vazio, e login retorna 200 com token.
+A API possui 29 endpoints, autenticação JWT stateless e RBAC mínimo. Consultas e
+atualizações de recursos retornam 200 com DTOs. A troca de senha e as exclusões
+retornam 204 sem corpo. Criações retornam 201 com corpo e Location, o registro
+retorna 201 vazio e o login retorna 200 com token.
 As URLs antigas com `/users/{userId}` foram removidas, sem aliases. O frontend React
-em `frontend/` integra cadastro, login, recuperação da sessão e um painel com os
-dados reais de `/me`. As demais páginas internas continuam como placeholders protegidos.
+em `frontend/` integra cadastro, login e recuperação da sessão. Após entrar, o usuário
+pode gerenciar projetos, tarefas e sessões de foco e alterar a senha pelo Perfil.
 
 ### Iniciar backend e frontend
 
@@ -106,6 +107,7 @@ Endpoints com prefixo `/api/v1`:
 | POST | `/auth/login` | Público |
 | GET | `/users` | ADMIN |
 | GET, PUT, PATCH, DELETE | `/me` | Autenticado, própria conta |
+| PUT | `/me/password` | Autenticado, exige a senha atual da própria conta |
 | GET, POST | `/projects` | Autenticado |
 | GET, PUT, PATCH, DELETE | `/projects/{projectId}` | Autenticado + ownership |
 | GET | `/tasks` | Autenticado, próprias tarefas |
@@ -131,15 +133,23 @@ informada, mas rejeita valores vazios ou que excedam 72 bytes. DTOs e principal
 não revelam credenciais em sua representação textual. Respostas de User contêm
 somente id, name e email. PUT/PATCH de `/me` não alteram senha, hash, ID ou role.
 
-JWT usa Auth0 java-jwt 4.6.1, HS256, issuer `focustask-api`, email normalizado
-como subject, claim `userId`, `iat` e expiração de 15 minutos. A assinatura e os
-claims obrigatórios são verificados; o filtro carrega a conta atual pelo email
-e confere o ID. Authorities vêm do banco, não do payload do token.
+Para alterar a senha, envie `currentPassword` e `newPassword` em um
+`PUT /api/v1/me/password` com o Bearer da conta. A nova senha segue os limites
+do cadastro. Se a senha atual estiver incorreta, a API retorna 400 com a mensagem
+em `errors.currentPassword` e o login continua válido. Em caso de sucesso,
+a API atualiza o hash e incrementa a versão das credenciais na mesma transação.
+A resposta é 204. O próximo acesso exige login com a nova senha.
+
+O JWT usa Auth0 java-jwt 4.6.1, HS256 e issuer `focustask-api`. Os tokens
+novos expiram 12 horas após a emissão. O filtro verifica a assinatura e compara o
+email, o `userId` e a `credentialVersion` com a conta no banco, de onde também
+vêm as permissões. Um token legado sem `credentialVersion` vale como versão zero.
+Após uma troca de senha, os tokens anteriores dessa conta recebem 401.
 
 Alterar email exige novo login; o token anterior é recusado enquanto seu subject
 não corresponder à conta. Reatribuir esse email a outra conta não valida o token
 antigo, graças à conferência do ID. Restaurar o email na mesma conta antes da
-expiração pode revalidar esse token: não há blacklist ou versão de revogação.
+expiração pode revalidar esse token se a versão das credenciais continuar a mesma.
 Excluir a conta impede o uso posterior de seus tokens. Mudanças de role no banco
 valem na próxima requisição. Não há sessão HTTP, refresh token ou endpoint de logout.
 
@@ -171,11 +181,11 @@ NegocioException (abstrata, shared.exception)
 └── EmailAlreadyExistsException (features.user)
 ```
 
-São quatro classes. As categorias compartilhadas ficam em `shared.exception`;
+As categorias compartilhadas ficam em `shared.exception`;
 `EntidadeNaoEncontradaException` e `OperacaoInvalidaException` recebem mensagens
-pelo construtor público. A única exception específica, `EmailAlreadyExistsException`,
-permanece diretamente em `features.user`, permitindo distinguir a duplicidade no
-handler centralizado. Não há necessidade de subpacotes de exceptions nas features.
+pelo construtor público. Em `features.user`, `EmailAlreadyExistsException`
+identifica email duplicado e `IncorrectCurrentPasswordException` indica que a
+senha atual foi recusada durante a troca.
 
 Recurso inexistente ou indisponível no contexto informado gera
 `EntidadeNaoEncontradaException` com a identificação correta: "User not found",
@@ -186,7 +196,7 @@ pausar ou retomar uma sessão concluída gera `OperacaoInvalidaException`, com
 As demais invariantes preservam as exceções padrão do Java já utilizadas.
 
 `GlobalExceptionHandler`, em `shared.exception`, concentra a tradução HTTP com
-`@RestControllerAdvice` e estende `ResponseEntityExceptionHandler`. As quatro
+`@RestControllerAdvice` e estende `ResponseEntityExceptionHandler`. As
 exceptions permanecem independentes de HTTP. Controllers não possuem try/catch
 para regras de negócio; services e APIs internas não constroem respostas HTTP.
 
@@ -197,6 +207,7 @@ para regras de negócio; services e APIs internas não constroem respostas HTTP.
 | Corpo ausente, JSON malformado, tipo/enum/data inválido | 400 | Mensagem pública sobre corpo inválido |
 | Parâmetro com tipo incompatível | 400 | Mensagem pública sobre parâmetro inválido |
 | `EmailAlreadyExistsException` | 409 | `Email already registered` |
+| `IncorrectCurrentPasswordException` | 400 | `errors.currentPassword` contém `Senha atual incorreta.` |
 | `DataIntegrityViolationException` | 409 | `The operation conflicts with existing data.` |
 | `OperacaoInvalidaException` | 422 | Mensagem da operação rejeitada |
 | Outra `NegocioException` | 400 | Mensagem de negócio |
@@ -250,7 +261,7 @@ segundo advice por `spring.mvc.problemdetails.enabled`.
 ### Contratos de entrada e validação
 
 Project, Task e FocusSession têm `CreateDTO`, `UpdateDTO`, `PatchDTO` e `ResponseDTO`.
-User usa RegisterRequestDTO/LoginRequestDTO e os DTOs atuais de perfil. Os 13 corpos
+User usa DTOs de registro, login, perfil e troca de senha. Os 14 corpos
 de entrada usam `@Valid`; erros estruturais retornam HTTP 400 com ProblemDetail
 e mensagens agrupadas por campo no handler centralizado. Nomes/títulos têm até 255 caracteres; email é validado
 e tem até 254. IDs presentes nos DTOs devem ser positivos. `dueDate` é opcional
@@ -261,7 +272,7 @@ e pode estar no passado. Descrições continuam opcionais, sem limite adicional.
 | User | Registro: `name`, `email`, `password` obrigatórios | Ambos obrigatórios | Ambos opcionais |
 | Project | `name` obrigatório; `description` opcional | Mesmo conjunto | Ambos opcionais |
 | Task | `title` obrigatório; `description`, `dueDate` opcionais | `projectId`, `title`, `status`, `priority` obrigatórios; descrição/prazo opcionais | Todos opcionais |
-| FocusSession | `taskId` opcional | `status` obrigatório; `taskId` opcional | Ambos opcionais |
+| FocusSession | `taskId`, `projectId`, `title` e `plannedMinutes` opcionais | `status` obrigatório; `taskId` opcional | `taskId`, `status`, `title`, `plannedMinutes` e `association` opcionais |
 
 PATCH interpreta ausência e `null` como **não alterar**; `{}` é válido. Valores
 presentes ainda devem ser válidos, inclusive nomes/títulos não vazios nem só espaços.
@@ -271,7 +282,8 @@ aplicação. Nenhum DTO aplica novos defaults ou regras de negócio.
 
 FocusSession pode nascer avulsa com `{}` em POST `/api/v1/focus-sessions`. O POST
 `/api/v1/tasks/{taskId}/focus-sessions` não recebe corpo: taskId vem do path e
-o usuário vem do principal. Datas, duração e estado inicial são definidos pelo domínio. PUT/PATCH
+o usuário vem do principal. A duração planejada aceita de 1 a 240 minutos. O domínio
+registra os horários e as pausas que determinam o tempo efetivamente trabalhado. PUT/PATCH
 recebem o estado solicitado; a aplicação chama `pause`, `resume` ou `complete`
 na entidade usando o Clock do servidor. O mapper não altera status nem calcula tempo.
 PUT com `taskId = null` desvincula; PATCH com null mantém o vínculo. Vínculo e
@@ -280,7 +292,7 @@ estado são processados juntos sob bloqueio pessimista e na mesma transação.
 As respostas usam apenas campos escalares e enums HTTP: User (`id`, `name`, `email`),
 Project (`id`, `userId`, `name`, `description`), Task (`id`, `projectId`, `title`,
 `description`, `status`, `priority`, `dueDate`) e FocusSession (`id`, `userId`,
-`taskId`, `status`, `startedAt`, `endedAt`, `pausedAt`, `totalPausedSeconds`).
+`taskId`, `projectId`, `title`, `plannedMinutes`, `status`, `startedAt`, `endedAt`, `pausedAt`, `totalPausedSeconds`).
 
 ### Mapeamento
 
@@ -337,7 +349,7 @@ for fraco, sem revelar seu valor. Os testes usam configuração própria de test
 
 Execute `./mvnw spring-boot:run` (Windows: `.\mvnw.cmd spring-boot:run`).
 
-Flyway aplica V1 e `V2__add_user_authentication.sql`. A V2 acrescenta password_hash
+Flyway aplica as migrações em ordem. A V2 acrescenta password_hash
 obrigatório e role USER/ADMIN em VARCHAR. V1 permanece intacta. **A transição da
 etapa 5 pressupõe a tabela users vazia**: foi escolhida a recriação manual do banco
 descartável de desenvolvimento e novo cadastro pelo endpoint de registro.
@@ -347,9 +359,12 @@ procedimento a dados que devam ser preservados. A migration não apaga dados nem
 gera senhas legadas. A aplicação não executa reset, clean, create-drop ou baseline
 automático; Hibernate apenas valida (`ddl-auto=validate`).
 
+A V3 acrescenta os detalhes da sessão de foco. A V4 eleva o limite da duração
+planejada para 240 minutos. A V5 acrescenta `users.credential_version`, com
+valor inicial zero para as contas existentes.
+
 Os instantes são tratados em UTC. Enums usam nomes em VARCHAR, com validações no
-schema. Os IDs escalares não criam FKs pelo JPA: as quatro FKs são definidas
-explicitamente pela migration, todas com `ON DELETE RESTRICT`.
+schema. As migrações definem as chaves estrangeiras entre entidades.
 
 ## Regras entre features
 
@@ -382,11 +397,11 @@ e registre essa alternativa ao informar os resultados.
 - Testes de aplicação cobrem unicidade antes de mutação, contexto de recursos,
   movimentação, PUT/PATCH e ordem das exclusões. Os testes de domínio preservam
   invariantes e a matriz de transições da sessão.
-- Testes MVC cobrem as 28 rotas, delegação, corpos, validação, códigos de sucesso,
+- Testes MVC cobrem as 29 rotas, delegação, corpos, validação, códigos de sucesso,
   Location e tradução das exceptions para 400, 404, 409 e 422. Os testes do
   handler cobrem fallback 500 seguro, erros MVC, contexto de instance, content type
   e ausência de mensagens técnicas na resposta.
-- A auditoria recursiva impede Entities nos contratos HTTP e verifica os 13 corpos
+- A auditoria recursiva impede Entities nos contratos HTTP e verifica os 14 corpos
   validados. A auditoria de arquitetura verifica dependências dos controllers,
   transações na aplicação, ausência de HTTP nos services/exceções e montagem dos
   beans das features sem ciclos.
@@ -419,12 +434,14 @@ e registre essa alternativa ao informar os resultados.
 7. Promover uma conta de teste pelo procedimento SQL acima; novo login; GET `/users`: 200.
 8. Confirmar que ADMIN ainda recebe 404 para recursos alheios.
 9. Alterar email em `/me`; confirmar 401 com token antigo e novo login com email novo.
-10. DELETE `/me`; confirmar exclusão coordenada e rejeição do token anterior.
+10. PUT `/me/password` com a senha atual e a nova. Confirmar 204, consultar `/me` com o token anterior e verificar o 401. Entrar com a nova senha.
+11. DELETE `/me` com o novo token. Confirmar a exclusão coordenada e a rejeição desse token.
 
-Não há arquivo/workspace Insomnia versionado. Fora do escopo: login social, OAuth2,
-refresh token, blacklist, MFA, recuperação de senha, gerenciamento administrativo
-completo, endpoint de mudança de senha/role e frontend. Não foram adicionados
-Spring Modulith, ArchUnit ou H2.
+A coleção e as instruções para testar a API estão no [guia do Insomnia](docs/insomnia/GUIA.md).
+A troca pelo Perfil exige a senha atual. A recuperação de senha esquecida por e-mail,
+login social, OAuth2, refresh token, blacklist, MFA, gerenciamento administrativo
+completo e alteração de roles por HTTP estão fora do escopo desta etapa.
+O projeto segue sem Spring Modulith, ArchUnit ou H2.
 
 ## Docker e Render
 

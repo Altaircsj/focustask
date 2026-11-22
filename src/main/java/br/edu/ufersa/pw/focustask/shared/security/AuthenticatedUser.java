@@ -12,16 +12,19 @@ public final class AuthenticatedUser implements UserDetails, CredentialsContaine
     private final Long id;
     private final String email;
     private String passwordHash;
+    private final long credentialVersion;
     private final List<GrantedAuthority> authorities;
 
-    public AuthenticatedUser(Long id, String email, String passwordHash,
+    public AuthenticatedUser(Long id, String email, String passwordHash, long credentialVersion,
                              Collection<? extends GrantedAuthority> authorities) {
         this.id = id;
         this.email = email;
         this.passwordHash = passwordHash;
+        this.credentialVersion = credentialVersion;
         this.authorities = List.copyOf(authorities);
     }
     public Long getId() { return id; }
+    public long getCredentialVersion() { return credentialVersion; }
     @Override public String getUsername() { return email; }
     @JsonIgnore @Override public String getPassword() { return passwordHash; }
     @Override public Collection<? extends GrantedAuthority> getAuthorities() { return authorities; }

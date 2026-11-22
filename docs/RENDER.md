@@ -37,6 +37,6 @@ O Dockerfile compila com Maven/Java 21 e executa com JRE 21 e usuário não priv
 
 O workflow executa todos os testes com MySQL/PostgreSQL, rejeita testes ignorados e constrói a imagem. `PostgresDeploymentTests` verifica migrations, saúde pública, cadastro/login, CRUD com token, erros e regras de sessão.
 
-Importe `docs/insomnia/FocusTask-colecao.json` e configure as variáveis descritas em `docs/insomnia/GUIA.md`. Primeiro registre, faça login e copie o token. Rotas protegidas exigem `Authorization: Bearer <token>`; ele expira em 15 minutos. GET /api/v1/users exige ADMIN; cadastro sempre cria USER. A própria conta fica em /api/v1/me.
+Importe `docs/insomnia/FocusTask-colecao.json` e configure as variáveis descritas em `docs/insomnia/GUIA.md`. Primeiro registre, faça login e copie o token. Rotas protegidas exigem `Authorization: Bearer <token>`; ele expira em 12 horas. GET /api/v1/users exige ADMIN; cadastro sempre cria USER. A própria conta fica em /api/v1/me.
 
 No Render Free a instância adormece por inatividade. O PostgreSQL gratuito tem prazo limitado; consulte a data no painel. Use dados fictícios na demonstração.

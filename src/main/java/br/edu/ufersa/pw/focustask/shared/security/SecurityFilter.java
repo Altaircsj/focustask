@@ -48,7 +48,8 @@ public class SecurityFilter extends OncePerRequestFilter {
             }
             var identity = tokens.verify(headers.getFirst().substring(7));
             var principal = (AuthenticatedUser) users.loadUserByUsername(identity.email());
-            if (!identity.id().equals(principal.getId()) || !identity.email().equals(principal.getUsername())) {
+            if (!identity.id().equals(principal.getId()) || !identity.email().equals(principal.getUsername())
+                    || identity.credentialVersion() != principal.getCredentialVersion()) {
                 throw new BadCredentialsException("Invalid token identity");
             }
             principal.eraseCredentials();

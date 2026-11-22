@@ -40,6 +40,7 @@ public class TokenService {
     public String generate(AuthenticatedUser user) {
         var now = clock.instant();
         return JWT.create().withIssuer(issuer).withSubject(user.getUsername()).withClaim("userId", user.getId())
+                .withClaim("credentialVersion", user.getCredentialVersion())
                 .withIssuedAt(now).withExpiresAt(now.plus(expiration)).sign(algorithm);
     }
 
@@ -51,12 +52,18 @@ public class TokenService {
             if (email == null || email.isBlank() || id == null || id <= 0) {
                 throw new BadCredentialsException("Invalid token");
             }
-            return new Identity(id, email);
+            var claim = jwt.getClaim("credentialVersion");
+            if (claim.isMissing()) return new Identity(id, email, 0);
+            Object version = claim.as(Object.class);
+            if (!(version instanceof Integer || version instanceof Long) || ((Number) version).longValue() < 0) {
+                throw new BadCredentialsException("Invalid token version");
+            }
+            return new Identity(id, email, ((Number) version).longValue());
         } catch (JWTVerificationException | IllegalArgumentException ex) {
             // Do not retain the JWT library exception: it may contain claims supplied by the client.
             throw new BadCredentialsException("Invalid token");
         }
     }
 
-    public record Identity(Long id, String email) {}
+    public record Identity(Long id, String email, long credentialVersion) {}
 }

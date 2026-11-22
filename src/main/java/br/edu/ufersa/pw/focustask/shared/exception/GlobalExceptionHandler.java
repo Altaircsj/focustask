@@ -1,6 +1,7 @@
 package br.edu.ufersa.pw.focustask.shared.exception;
 
 import br.edu.ufersa.pw.focustask.features.user.EmailAlreadyExistsException;
+import br.edu.ufersa.pw.focustask.features.user.IncorrectCurrentPasswordException;
 import br.edu.ufersa.pw.focustask.shared.security.SecurityProblemHandler;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.authentication.AuthenticationServiceException;
@@ -41,6 +42,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(OperacaoInvalidaException.class)
     public ProblemDetail handleInvalidOperation(OperacaoInvalidaException ex) {
         return problem(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage());
+    }
+
+    @ExceptionHandler(IncorrectCurrentPasswordException.class)
+    public ProblemDetail handleIncorrectPassword(IncorrectCurrentPasswordException ex) {
+        ProblemDetail problem = problem(HttpStatus.BAD_REQUEST, "One or more fields are invalid.");
+        problem.setProperty("errors", Map.of("currentPassword", List.of(ex.getMessage())));
+        return problem;
     }
 
     @ExceptionHandler(EmailAlreadyExistsException.class)

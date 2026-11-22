@@ -23,10 +23,11 @@ class ControllerMappingsTests {
     @MockitoBean FocusSessionController focusSessionController;
 
     @Test
-    void preservesAll28DistinctRoutesIncludingTheThreeRestoredOnes() {
+    void preservesDistinctRoutesIncludingPasswordChange() {
         long featureMappings = mappings.getHandlerMethods().values().stream()
                 .filter(method -> method.getBeanType().getPackageName().contains(".features.")).count();
-        assertEquals(28, featureMappings);
+        assertEquals(29, featureMappings);
+        assertRoute(RequestMethod.PUT, "/api/v1/me/password");
         assertRoute(RequestMethod.POST, "/api/v1/projects/{projectId}/tasks");
         assertFalse(mappings.getHandlerMethods().keySet().stream()
                 .anyMatch(mapping -> mapping.getPatternValues().contains("/api/v1/tasks")

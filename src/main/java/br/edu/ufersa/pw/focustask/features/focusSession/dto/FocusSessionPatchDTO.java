@@ -7,7 +7,7 @@ public record FocusSessionPatchDTO(
         @Positive Long taskId,
         FocusSessionStatusDTO status,
         @Size(max = 255) String title,
-        @Min(1) @Max(180) Integer plannedMinutes,
+        @Min(1) @Max(240) Integer plannedMinutes,
         @Valid FocusSessionAssociationDTO association
 ) {
     public FocusSessionPatchDTO(Long taskId, FocusSessionStatusDTO status) {

@@ -20,6 +20,6 @@ class UserDetailsServiceImpl implements UserDetailsService {
         var authorities = user.getRole() == UserRole.ADMIN
                 ? List.of(new SimpleGrantedAuthority("ROLE_ADMIN"), new SimpleGrantedAuthority("ROLE_USER"))
                 : List.of(new SimpleGrantedAuthority("ROLE_USER"));
-        return new AuthenticatedUser(user.getId(), user.getEmail(), user.getPasswordHash(), authorities);
+        return new AuthenticatedUser(user.getId(), user.getEmail(), user.getPasswordHash(), user.getCredentialVersion(), authorities);
     }
 }

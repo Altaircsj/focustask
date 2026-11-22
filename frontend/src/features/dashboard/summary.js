@@ -1,8 +1,8 @@
 import { activeSeconds } from '../focusSessions/format.js'
 
 export const DEFAULT_MINUTES = 25
-export const MINUTE_OPTIONS = [15, 25, 45, 60]
-export const MAX_MINUTES = 180
+export const MINUTE_OPTIONS = [15, 25, 45, 60, 90, 120, 240]
+export const MAX_MINUTES = 240
 export const FOCUS_SECONDS = DEFAULT_MINUTES * 60
 const PRIORITY_RANK = { HIGH: 0, MEDIUM: 1, LOW: 2 }
 const pad = (value) => String(value).padStart(2, '0')

@@ -152,8 +152,52 @@ class AuthSecurityTests {
         verify(repository, never()).save(any());
     }
 
+    @Test void passwordChangeRejectsInvalidFieldsAndRevokesOnlyThisAccountsTokens() throws Exception {
+        String endpoint = "/api/v1/me/password";
+        String previous = login(owner.getEmail());
+        String other = login("other@example.com");
+        String next = " nova senha com espaços ";
+        var now = java.time.Instant.now();
+        String legacy = com.auth0.jwt.JWT.create().withIssuer("focustask-api").withSubject(owner.getEmail())
+                .withClaim("userId", owner.getId()).withIssuedAt(now).withExpiresAt(now.plusSeconds(300))
+                .sign(com.auth0.jwt.algorithms.Algorithm.HMAC256("auth-test-only-secret-with-at-least-32-bytes"));
+        when(repository.findForPasswordChange(1L)).thenReturn(Optional.of(owner));
+
+        mvc.perform(put(endpoint).contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/v1/me").header("Authorization", "Bearer " + legacy)).andExpect(status().isOk());
+        mvc.perform(put(endpoint).header("Authorization", "Bearer " + previous).contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(Map.of("currentPassword", "incorrect", "newPassword", next))))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.errors.currentPassword").isArray());
+        for (String invalid : List.of("12345", "é".repeat(37), "      ")) {
+            mvc.perform(put(endpoint).header("Authorization", "Bearer " + previous).contentType(MediaType.APPLICATION_JSON)
+                            .content(json.writeValueAsString(Map.of("currentPassword", "secret12", "newPassword", invalid))))
+                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.errors.newPassword").isArray());
+        }
+        assertEquals(0, owner.getCredentialVersion());
+        login(owner.getEmail());
+        mvc.perform(put(endpoint).header("Authorization", "Bearer " + legacy).contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(Map.of("currentPassword", "secret12", "newPassword", next))))
+                .andExpect(status().isNoContent()).andExpect(content().string(""));
+        assertEquals(1, owner.getCredentialVersion());
+        for (String old : List.of(legacy, previous)) {
+            mvc.perform(get("/api/v1/me").header("Authorization", "Bearer " + old)).andExpect(status().isUnauthorized());
+        }
+        mvc.perform(get("/api/v1/me").header("Authorization", "Bearer " + other)).andExpect(status().isOk());
+        mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(Map.of("email", owner.getEmail(), "password", "secret12"))))
+                .andExpect(status().isUnauthorized());
+        String response = mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(Map.of("email", owner.getEmail(), "password", next))))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String fresh = json.readTree(response).get("token").asString();
+        mvc.perform(get("/api/v1/me").header("Authorization", "Bearer " + fresh)).andExpect(status().isOk());
+    }
+
     @Test void loginAuthenticatesAndSessionsDoNotReplaceBearer() throws Exception {
         String token = login("OWNER@example.com");
+        var jwt = com.auth0.jwt.JWT.decode(token);
+        assertEquals(java.time.Duration.ofHours(12),
+                java.time.Duration.between(jwt.getIssuedAtAsInstant(), jwt.getExpiresAtAsInstant()));
         var response = mvc.perform(get("/api/v1/me").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.password").doesNotExist()).andExpect(jsonPath("$.passwordHash").doesNotExist())

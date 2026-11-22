@@ -24,7 +24,7 @@ public abstract class AuthenticatedMvcTest {
     @MockitoBean TokenService tokenService;
     @MockitoBean UserDetailsService userDetailsService;
     public static AuthenticatedUser principal(long id) {
-        return new AuthenticatedUser(id, "test@example.com", null,
+        return new AuthenticatedUser(id, "test@example.com", null, 0,
                 List.of(new SimpleGrantedAuthority("ROLE_USER"), new SimpleGrantedAuthority("ROLE_ADMIN")));
     }
     @BeforeEach void authenticateControllerRequests() {

@@ -8,5 +8,7 @@ export const profileService = {
     }
     return { id: user.id, name: user.name, email: user.email }
   },
+  changePassword: ({ currentPassword, newPassword }, signal) =>
+    api.request('/me/password', { method: 'PUT', body: { currentPassword, newPassword }, signal }),
   remove: (signal) => api.request('/me', { method: 'DELETE', signal }),
 }

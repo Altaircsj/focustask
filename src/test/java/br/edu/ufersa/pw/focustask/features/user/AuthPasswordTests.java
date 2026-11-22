@@ -22,9 +22,12 @@ class AuthPasswordTests {
             assertFalse(validator.validate(new LoginRequestDTO("u@example.com", "é".repeat(37))).isEmpty());
         }
         assertFalse(new RegisterRequestDTO("User", "u@example.com", "private-password").toString().contains("private-password"));
+        var request = new ChangePasswordRequestDTO("old-private", "new-private");
+        assertEquals("{}", tools.jackson.databind.json.JsonMapper.builder().build().writeValueAsString(request));
+        assertFalse(request.toString().contains("private"));
         assertFalse(new LoginRequestDTO("u@example.com", "private-password").toString().contains("private-password"));
         assertFalse(new TokenResponseDTO("private-token").toString().contains("private-token"));
-        var principal = new AuthenticatedUser(1L, "u@example.com", "private-hash", List.of());
+        var principal = new AuthenticatedUser(1L, "u@example.com", "private-hash", 0, List.of());
         assertFalse(principal.toString().contains("private-hash"));
         principal.eraseCredentials();
         assertNull(principal.getPassword());

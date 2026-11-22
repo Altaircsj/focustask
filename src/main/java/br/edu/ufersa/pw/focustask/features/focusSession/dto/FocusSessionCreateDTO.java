@@ -6,7 +6,7 @@ public record FocusSessionCreateDTO(
         @Positive Long taskId,
         @Positive Long projectId,
         @Size(max = 255) String title,
-        @Min(1) @Max(180) Integer plannedMinutes
+        @Min(1) @Max(240) Integer plannedMinutes
 ) {
     public FocusSessionCreateDTO(Long taskId) { this(taskId, null, null, null); }
 }

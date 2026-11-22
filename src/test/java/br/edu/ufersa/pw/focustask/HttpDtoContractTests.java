@@ -22,7 +22,7 @@ class HttpDtoContractTests {
             ProjectController.class, TaskController.class, FocusSessionController.class);
 
     @Test
-    void all28EndpointsExposeOnlyHttpDtosAndAll13BodiesUseValid() {
+    void endpointsExposeOnlyHttpDtosAndRequestBodiesUseValid() {
         int endpoints = 0;
         int bodies = 0;
         for (Class<?> controller : CONTROLLERS) {
@@ -41,8 +41,8 @@ class HttpDtoContractTests {
                 }
             }
         }
-        assertEquals(28, endpoints);
-        assertEquals(13, bodies);
+        assertEquals(29, endpoints);
+        assertEquals(14, bodies);
     }
 
     private static void assertDtoPayload(Type type) {

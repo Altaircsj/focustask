@@ -13,7 +13,7 @@ class TokenServiceTests {
     private final Instant now = Instant.parse("2026-09-29T12:00:00Z");
     private final Clock clock = Clock.fixed(now, ZoneOffset.UTC);
     private final TokenService service = new TokenService(SECRET, "focustask-api", Duration.ofMinutes(15), clock);
-    private final AuthenticatedUser user = new AuthenticatedUser(7L, "student@example.com", null, List.of());
+    private final AuthenticatedUser user = new AuthenticatedUser(7L, "student@example.com", null, 3, List.of());
 
     @Test void generatesRequiredClaimsAndExpiresAtFifteenMinutes() {
         String token = service.generate(user);
@@ -24,7 +24,8 @@ class TokenServiceTests {
         assertEquals(7L, jwt.getClaim("userId").asLong());
         assertEquals(now, jwt.getIssuedAtAsInstant());
         assertEquals(now.plusSeconds(900), jwt.getExpiresAtAsInstant());
-        assertEquals(new TokenService.Identity(7L, user.getUsername()), service.verify(token));
+        assertEquals(3L, jwt.getClaim("credentialVersion").asLong());
+        assertEquals(new TokenService.Identity(7L, user.getUsername(), 3), service.verify(token));
         TokenService expired = new TokenService(SECRET, "focustask-api", Duration.ofMinutes(15),
                 Clock.fixed(now.plusSeconds(901), ZoneOffset.UTC));
         assertThrows(BadCredentialsException.class, () -> expired.verify(token));
