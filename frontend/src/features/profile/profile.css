@@ -21,8 +21,6 @@
 .danger-box { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px; border: 1px solid color-mix(in srgb, #ef4444 40%, transparent); border-radius: 10px; background: color-mix(in srgb, #ef4444 8%, var(--bg)); }
 .dashboard-page .danger-title { color: #ef4444; font-size: 13px; font-weight: 700; }
 .dashboard-page .danger-text { margin-top: 2px; color: var(--text); font-size: 12px; }
-.dash-btn-solid-danger { white-space: nowrap; border-color: #ef4444; background: #ef4444; color: #fff; }
-.dash-btn-solid-danger:focus-visible { outline: 2px solid #ef4444; outline-offset: 2px; }
 @media (max-width: 768px) {
   .profile-card { padding: 20px; }
   .profile-grid { grid-template-columns: 1fr; }

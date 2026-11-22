@@ -1,13 +1,24 @@
 .task-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .task-header p { margin-top: 4px; color: var(--text); }
 .task-page-actions { display: flex; flex-wrap: wrap; gap: 12px; }
-.breadcrumb { display: flex; gap: 8px; margin-bottom: 4px; color: var(--text); font-size: 13px; }
-.dashboard-page .breadcrumb a { color: var(--text); font-weight: 400; }
-.breadcrumb [aria-current] { color: var(--brand); }
 .task-facts .stat-card { min-height: 0; }
 .task-facts .stat-card dd { font-size: 14px; font-weight: 600; text-transform: none; }
-.dash-btn-danger,
-.dashboard-page a.dash-btn-danger { border-color: #ef4444; color: #ef4444; }
 .task-timer .timer-ring { width: 212px; height: 212px; padding: 0; justify-content: center; border-radius: 50%; }
 .task-timer .timer-clock { font-size: 48px; }
 .task-page .sessions-table { width: 100%; }
+
+.tasks-table { table-layout: fixed; }
+.tasks-table .col-name { width: auto; }
+.tasks-table .col-project { width: 150px; }
+.tasks-table .col-priority { width: 110px; }
+.tasks-table .col-status { width: 140px; }
+.tasks-table .col-due { width: 110px; }
+.tasks-table .col-focused { width: 90px; }
+.tasks-table .col-actions { width: 48px; }
+.task-name-cell { display: table-cell; }
+.task-name-cell .task-check { display: inline-block; vertical-align: middle; margin-right: 12px; }
+.dashboard-page .task-name-cell a { color: var(--text-h); font-weight: 500; vertical-align: middle; }
+.task-check:checked { border-color: var(--brand); background: var(--brand) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.5l2.5 2.5 4.5-5' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 12px no-repeat; }
+.status-badge { display: inline-block; padding: 4px 10px; border-radius: 6px; background: color-mix(in srgb, var(--text) 10%, var(--bg)); color: var(--text); font-size: 11px; font-weight: 600; }
+.status-badge[data-status="IN_PROGRESS"] { background: var(--brand-bg); color: var(--brand); }
+.status-badge[data-status="DONE"] { background: color-mix(in srgb, #10b981 14%, var(--bg)); color: #059669; }

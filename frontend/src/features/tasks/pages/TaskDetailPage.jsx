@@ -6,7 +6,7 @@ import { activeSeconds, formatDuration, formatStartedAt } from '../../focusSessi
 import { DEFAULT_MINUTES, formatClock, formatFocusedTime } from '../../dashboard/summary'
 import { loadMinutes } from '../../dashboard/dashboardService'
 import Modal from '../../dashboard/components/Modal'
-import EditTaskModal from '../components/EditTaskModal'
+import TaskFormModal from '../components/TaskFormModal'
 import { formatDueDate, PRIORITY_LABEL, STATUS_LABEL } from '../format'
 import { taskService } from '../taskService'
 import '../../dashboard/dashboard.css'
@@ -148,7 +148,7 @@ export default function TaskDetailPage() {
         )}
       </section>
 
-      {modal === 'edit' && <EditTaskModal task={task} busy={busy} error={actionError} onSave={saveTask} onClose={closeModal} />}
+      {modal === 'edit' && <TaskFormModal task={task} projects={data.projects} busy={busy} error={actionError} onSave={saveTask} onClose={closeModal} />}
       {modal === 'delete' && (
         <Modal title="Excluir esta tarefa?" subtitle="A tarefa será removida e esta ação não pode ser desfeita." onClose={closeModal}>
           {actionError && <p role="alert">{actionError}</p>}
