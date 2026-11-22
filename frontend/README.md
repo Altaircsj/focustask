@@ -2,8 +2,7 @@
 
 React, JavaScript, Vite e React Router. Cadastro e login usam a API real; o painel
 mostra saudação, resumo do dia, cronômetro de foco e tarefas do dia. As sessões de foco têm histórico e criação
-com a API real. Os detalhes de uma tarefa (`/tasks/:taskId`) e o perfil já funcionam. Projetos e lista de tarefas estão protegidos, mas seus CRUDs ainda não
-foram implementados.
+com a API real. Projetos (lista, criação, detalhes), tarefas (lista e detalhes) e perfil também usam a API real.
 
 ## Ambiente local
 
@@ -114,8 +113,17 @@ este trabalho. Não houve deploy ou teste do serviço remoto.
 | `src/features/focusSessions/pages/FocusSessionsPage.jsx` | Histórico em `/focus-sessions`: filtros Todas/Avulsa/Tarefa, pausar, retomar, concluir e excluir |
 | `src/features/focusSessions/pages/NewFocusSessionPage.jsx` | Criação em `/focus-sessions/new`: projeto e tarefa opcionais; sem tarefa a sessão é avulsa |
 | `src/features/tasks/pages/TaskDetailPage.jsx` | Detalhes da tarefa em `/tasks/:taskId`: dados, histórico de sessões, iniciar sessão, editar e excluir |
-| `src/features/tasks/components/EditTaskModal.jsx` | Modal "Editar Tarefa" (título, descrição, status, prioridade, prazo) |
-| `src/features/tasks/taskService.js` | `GET`, `PATCH` e `DELETE` de `/tasks/{id}` |
+| `src/features/tasks/pages/TasksPage.jsx` | Lista em `/tasks`: filtros Todas/Pendentes/Em Andamento/Concluídas, concluir pelo checkbox, editar e excluir |
+| `src/features/tasks/components/TaskFormModal.jsx` | Modal "Criar/Editar Tarefa" (título, projeto, status, prioridade, descrição, prazo) |
+| `src/features/projects/pages/ProjectsPage.jsx` | Projetos em `/projects`: cards com progresso e tempo focado, criar, editar e excluir |
+| `src/features/projects/pages/ProjectDetailPage.jsx` | Detalhes em `/projects/:projectId`: tarefas do projeto, nova tarefa, editar e excluir projeto |
+| `src/features/projects/components/ProjectFormModal.jsx` | Modal "Criar/Editar Projeto" (nome e descrição) |
+| `src/features/projects/projectService.js` | `GET`, `POST`, `PATCH` e `DELETE` de `/projects` |
+| `src/features/projects/summary.js` | Lógica pura: progresso e tempo focado por projeto/tarefa |
+| `src/features/catalog/useCatalog.js` | Hooks que carregam projetos, tarefas e sessões e executam ações |
+| `src/features/catalog/components/ConfirmModal.jsx` | Confirmação de exclusão |
+| `src/components/ActionMenu.jsx` | Menu de ações (três pontos) compartilhado |
+| `src/features/tasks/taskService.js` | `GET`, `PATCH` e `DELETE` de `/tasks/{id}` e criação em `/projects/{id}/tasks` |
 | `src/features/tasks/format.js` | Rótulos de status e prioridade e formatação do prazo |
 | `src/features/tasks/tasks.css` | Estilos específicos dos detalhes da tarefa |
 | `src/features/profile/pages/ProfilePage.jsx` | Perfil em `/profile`: edita nome e e-mail, exclui a conta; senha desabilitada (a API não tem troca de senha) |

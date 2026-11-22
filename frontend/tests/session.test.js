@@ -569,7 +569,7 @@ test('editar a tarefa envia PATCH e excluir remove e volta para a lista', async 
   const byText = (text) => [...document.querySelectorAll('button')].find((button) => button.textContent === text)
   await act(() => byText('Editar').click())
   assert.equal(document.querySelector('[role="dialog"] h2').textContent, 'Editar Tarefa')
-  await act(() => byText('Salvar alterações').click())
+  await act(() => byText('Salvar Tarefa').click())
   await settle()
   assert.equal(calls[0][0], 'PATCH')
   assert.equal(calls[0][1], '/tasks/7')
@@ -676,4 +676,139 @@ test('excluir a conta pede confirmação, envia DELETE /me e volta ao login', as
   assert.deepEqual(calls, [['DELETE', '/me']])
   assert.equal(sessionStorage.getItem(tokenKey), null)
   assert.equal(window.location.pathname, '/login')
+})
+
+const catalogProject = { id: 3, userId: 1, name: 'Redesign App', description: 'App de produtividade' }
+const catalogSessions = [{ ...focusSession, id: 1, taskId: 1, projectId: null, status: 'COMPLETED', startedAt: '2026-02-26T09:30:00Z', endedAt: '2026-02-26T09:55:00Z' }]
+
+function mockCatalogApi(onOther) {
+  sessionStorage.setItem(tokenKey, 'valido')
+  fetch.mock.mockImplementation((url, options = {}) => {
+    const path = url.replace('http://api.test/api/v1', '')
+    if (path === '/me') return Response.json(user)
+    if (options.method === 'GET') {
+      if (path === '/focus-sessions') return Response.json(catalogSessions)
+      if (path === '/tasks') return Response.json(dashboardTasks)
+      if (path === '/projects') return Response.json([catalogProject])
+      if (path === '/projects/3') return Response.json(catalogProject)
+      if (path === '/projects/99') return Response.json({ message: 'Not found' }, { status: 404 })
+    }
+    return onOther?.(path, options) ?? new Response(null, { status: 404 })
+  })
+}
+
+const buttonByText = (text) => [...document.querySelectorAll('button')].find((button) => button.textContent === text)
+
+test('a lista de projetos mostra progresso, tarefas e tempo focado, e cria um projeto', async () => {
+  const calls = []
+  mockCatalogApi((path, options) => {
+    calls.push([options.method, path, options.body])
+    return Response.json({ id: 8, userId: 1, name: 'Novo app', description: '' }, { status: 201 })
+  })
+  window.history.pushState({}, '', '/projects')
+  await openApp()
+  await settle()
+  const card = document.querySelector('.project-card')
+  assert.match(card.textContent, /Redesign App/)
+  assert.match(card.textContent, /33%/)
+  assert.match(card.textContent, /1\/3 tarefas/)
+  assert.match(card.textContent, /25m/)
+  assert.equal(card.querySelector('a').getAttribute('href'), '/projects/3')
+  await act(() => buttonByText('Novo Projeto').click())
+  assert.equal(document.querySelector('[role="dialog"] h2').textContent, 'Criar Novo Projeto')
+  assert.equal(buttonByText('Salvar Projeto').disabled, true)
+  await typeInto('#project-name', 'Novo app')
+  await act(() => buttonByText('Salvar Projeto').click())
+  await settle()
+  assert.deepEqual(calls, [['POST', '/projects', JSON.stringify({ name: 'Novo app', description: '' })]])
+  assert.equal(document.querySelector('[role="dialog"]'), null)
+  assert.equal(document.querySelectorAll('.projects-grid .project-card:not(.project-card-empty)').length, 2)
+})
+
+test('excluir um projeto pede confirmação e remove o cartão', async () => {
+  const calls = []
+  mockCatalogApi((path, options) => {
+    calls.push([options.method, path])
+    return new Response(null, { status: 204 })
+  })
+  window.history.pushState({}, '', '/projects')
+  await openApp()
+  await settle()
+  await act(() => document.querySelector('.project-card .row-menu-trigger').click())
+  assert.deepEqual([...document.querySelectorAll('.row-menu-list button')].map((button) => button.textContent), ['Editar', 'Excluir'])
+  await act(() => [...document.querySelectorAll('.row-menu-list button')].find((button) => button.textContent === 'Excluir').click())
+  assert.equal(calls.length, 0)
+  await act(() => buttonByText('Excluir projeto').click())
+  await settle()
+  assert.deepEqual(calls, [['DELETE', '/projects/3']])
+  assert.equal(document.querySelectorAll('.projects-grid .project-card:not(.project-card-empty)').length, 0)
+})
+
+test('os detalhes do projeto listam as tarefas e criam uma nova no projeto', async () => {
+  const calls = []
+  mockCatalogApi((path, options) => {
+    calls.push([options.method, path, options.body])
+    if (options.method === 'POST') return Response.json({ id: 40, projectId: 3, title: 'Nova', description: '', status: 'TODO', priority: 'MEDIUM', dueDate: null }, { status: 201 })
+    return Response.json({ id: 40, projectId: 3, title: 'Nova', description: '', status: 'IN_PROGRESS', priority: 'HIGH', dueDate: null })
+  })
+  window.history.pushState({}, '', '/projects/3')
+  await openApp()
+  await settle()
+  assert.equal(document.querySelector('h1').textContent, 'Detalhes do Projeto - Redesign App')
+  assert.equal(document.querySelectorAll('.projects-grid .project-card:not(.project-card-empty)').length, 3)
+  assert.match(document.querySelector('.project-card').textContent, /Pendentes|A fazer/)
+  await act(() => buttonByText('Nova Tarefa').click())
+  assert.equal(document.querySelector('#task-project').value, '3')
+  await typeInto('#task-title', 'Nova')
+  await act(() => document.querySelectorAll('#task-priority + .chip-row .chip')[2].click())
+  await act(() => {
+    const select = document.querySelector('#task-status')
+    select.value = 'IN_PROGRESS'
+    select.dispatchEvent(new window.Event('change', { bubbles: true }))
+  })
+  await act(() => buttonByText('Salvar Tarefa').click())
+  await settle()
+  assert.deepEqual(calls, [
+    ['POST', '/projects/3/tasks', JSON.stringify({ title: 'Nova', description: '' })],
+    ['PATCH', '/tasks/40', JSON.stringify({ status: 'IN_PROGRESS', priority: 'HIGH' })],
+  ])
+  assert.equal(document.querySelectorAll('.projects-grid .project-card:not(.project-card-empty)').length, 4)
+})
+
+test('um projeto inexistente mostra o aviso e o caminho de volta', async () => {
+  mockCatalogApi()
+  window.history.pushState({}, '', '/projects/99')
+  await openApp()
+  await settle()
+  assert.match(document.querySelector('[role="alert"]').textContent, /Projeto não encontrado/)
+  assert.equal(document.querySelector('a[href="/projects"].dash-btn').textContent, 'Voltar aos projetos')
+})
+
+test('a lista de tarefas filtra por status, conclui pelo checkbox e exclui', async () => {
+  const calls = []
+  mockCatalogApi((path, options) => {
+    calls.push([options.method, path, options.body])
+    return options.method === 'DELETE' ? new Response(null, { status: 204 }) : Response.json({ ...dashboardTasks[0], status: 'DONE' })
+  })
+  window.history.pushState({}, '', '/tasks')
+  await openApp()
+  await settle()
+  const titles = () => [...document.querySelectorAll('.tasks-table tbody tr')].map((row) => row.querySelector('a').textContent)
+  assert.deepEqual([...document.querySelectorAll('.filter-chip')].map((chip) => chip.textContent), ['Todas', 'Pendentes', 'Em Andamento', 'Concluídas'])
+  assert.deepEqual(titles(), ['Revisar protótipo', 'Escrever relatório', 'Planejar o próximo mês'])
+  await act(() => buttonByText('Pendentes').click())
+  assert.deepEqual(titles(), ['Revisar protótipo', 'Planejar o próximo mês'])
+  await act(() => buttonByText('Concluídas').click())
+  assert.deepEqual(titles(), ['Escrever relatório'])
+  await act(() => buttonByText('Todas').click())
+  await act(() => document.querySelector('input[aria-label="Concluir tarefa: Revisar protótipo"]').click())
+  await settle()
+  assert.deepEqual(calls[0], ['PATCH', '/tasks/1', JSON.stringify({ status: 'DONE' })])
+  assert.equal(document.querySelector('input[aria-label="Reabrir tarefa: Revisar protótipo"]').checked, true)
+  await act(() => document.querySelector('.tasks-table .row-menu-trigger').click())
+  await act(() => [...document.querySelectorAll('.row-menu-list button')].find((button) => button.textContent === 'Excluir').click())
+  await act(() => buttonByText('Excluir tarefa').click())
+  await settle()
+  assert.deepEqual(calls[1], ['DELETE', '/tasks/1', undefined])
+  assert.equal(titles().includes('Revisar protótipo'), false)
 })
