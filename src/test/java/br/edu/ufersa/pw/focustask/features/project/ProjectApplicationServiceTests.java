@@ -73,6 +73,7 @@ class ProjectApplicationServiceTests {
         Project project = new Project(1L, "Original", "Keep");
         org.springframework.test.util.ReflectionTestUtils.setField(project, "id", 2L);
         when(repository.findByIdAndUserId(2L, 1L)).thenReturn(Optional.of(project));
+        when(repository.findForUpdate(2L, 1L)).thenReturn(Optional.of(project));
         var patched = service.patch(1L, 2L, new ProjectPatchDTO("Updated", null));
         assertEquals("Keep", patched.description());
         var updated = service.update(1L, 2L, new ProjectUpdateDTO("Updated", null));

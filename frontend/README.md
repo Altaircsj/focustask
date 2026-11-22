@@ -117,7 +117,7 @@ este trabalho. Não houve deploy ou teste do serviço remoto.
 | `src/features/tasks/components/TaskFormModal.jsx` | Modal "Criar/Editar Tarefa" (título, projeto, status, prioridade, descrição, prazo) |
 | `src/features/projects/pages/ProjectsPage.jsx` | Projetos em `/projects`: cards com progresso e tempo focado, criar, editar e excluir |
 | `src/features/projects/pages/ProjectDetailPage.jsx` | Detalhes em `/projects/:projectId`: tarefas do projeto, nova tarefa, editar e excluir projeto |
-| `src/features/projects/components/ProjectFormModal.jsx` | Modal "Criar/Editar Projeto" (nome e descrição) |
+| `src/features/projects/components/ProjectFormModal.jsx` | Modal de criação e edição com nome, cor, descrição e tags sugeridas ou personalizadas |
 | `src/features/projects/projectService.js` | `GET`, `POST`, `PATCH` e `DELETE` de `/projects` |
 | `src/features/projects/summary.js` | Lógica pura: progresso e tempo focado por projeto/tarefa |
 | `src/features/catalog/useCatalog.js` | Hooks que carregam projetos, tarefas e sessões e executam ações |

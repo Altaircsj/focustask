@@ -270,13 +270,19 @@ e pode estar no passado. Descrições continuam opcionais, sem limite adicional.
 | Feature | CREATE | PUT | PATCH |
 |---|---|---|---|
 | User | Registro: `name`, `email`, `password` obrigatórios | Ambos obrigatórios | Ambos opcionais |
-| Project | `name` obrigatório; `description` opcional | Mesmo conjunto | Ambos opcionais |
+| Project | `name` obrigatório. `description`, `color` e `tags` opcionais | `name` obrigatório. `description` ausente ou nula limpa a descrição | Todos opcionais |
 | Task | `title` obrigatório; `description`, `dueDate` opcionais | `projectId`, `title`, `status`, `priority` obrigatórios; descrição/prazo opcionais | Todos opcionais |
 | FocusSession | `taskId`, `projectId`, `title` e `plannedMinutes` opcionais | `status` obrigatório; `taskId` opcional | `taskId`, `status`, `title`, `plannedMinutes` e `association` opcionais |
 
 PATCH interpreta ausência e `null` como **não alterar**; `{}` é válido. Valores
 presentes ainda devem ser válidos, inclusive nomes/títulos não vazios nem só espaços.
-PUT representa substituição dos campos editáveis: `null` limpa os opcionais.
+Em projetos, tanto PUT quanto PATCH preservam `color` e `tags` quando omitidos ou nulos.
+Uma lista de tags substitui a anterior na ordem enviada. Use `{"tags":[]}` para limpar.
+A API remove espaços nas pontas, aceita até 10 tags de 1 a 30 caracteres e rejeita
+duplicatas sem distinguir maiúsculas e minúsculas. A paleta aceita `#4D49FC` (padrão),
+`#F59E0B`, `#10B981`, `#EF4444`, `#A855F7`, `#06B6D4` e `#E2E8F0`.
+Por exemplo, `{"name":"Interface","color":"#A855F7","tags":["UI/UX","Pesquisa"]}`
+cria um projeto roxo. Os erros de validação retornam HTTP 400 em `errors.color` ou `errors.tags`.
 Essas diferenças são aplicadas pelos casos de uso e testadas nos mappers e na
 aplicação. Nenhum DTO aplica novos defaults ou regras de negócio.
 
@@ -289,8 +295,8 @@ na entidade usando o Clock do servidor. O mapper não altera status nem calcula 
 PUT com `taskId = null` desvincula; PATCH com null mantém o vínculo. Vínculo e
 estado são processados juntos sob bloqueio pessimista e na mesma transação.
 
-As respostas usam apenas campos escalares e enums HTTP: User (`id`, `name`, `email`),
-Project (`id`, `userId`, `name`, `description`), Task (`id`, `projectId`, `title`,
+Campos nas respostas HTTP: User (`id`, `name`, `email`),
+Project (`id`, `userId`, `name`, `description`, `color`, `tags`), Task (`id`, `projectId`, `title`,
 `description`, `status`, `priority`, `dueDate`) e FocusSession (`id`, `userId`,
 `taskId`, `projectId`, `title`, `plannedMinutes`, `status`, `startedAt`, `endedAt`, `pausedAt`, `totalPausedSeconds`).
 
@@ -361,7 +367,8 @@ automático; Hibernate apenas valida (`ddl-auto=validate`).
 
 A V3 acrescenta os detalhes da sessão de foco. A V4 eleva o limite da duração
 planejada para 240 minutos. A V5 acrescenta `users.credential_version`, com
-valor inicial zero para as contas existentes.
+valor inicial zero para as contas existentes. A V6 atribui a cor índigo aos projetos
+existentes e cria `project_tags` para as etiquetas ordenadas.
 
 Os instantes são tratados em UTC. Enums usam nomes em VARCHAR, com validações no
 schema. As migrações definem as chaves estrangeiras entre entidades.

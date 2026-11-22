@@ -29,7 +29,8 @@ class ProjectOwnershipSecurityTests extends AuthenticatedMvcTest {
         mvc.perform(patch("/api/v1/projects/88").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"Attack\"}")).andExpect(status().isNotFound());
         mvc.perform(delete("/api/v1/projects/88")).andExpect(status().isNotFound());
-        verify(repository, times(4)).findByIdAndUserId(88L, 7L);
+        verify(repository, times(2)).findByIdAndUserId(88L, 7L);
+        verify(repository, times(2)).findForUpdate(88L, 7L);
         verify(repository, never()).save(any());
         verify(repository, never()).deleteById(any());
         verifyNoInteractions(tasks, sessions);

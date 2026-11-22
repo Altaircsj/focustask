@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import ProjectBadge from '../../projects/components/ProjectBadge'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { AlarmClock, Award, CircleCheck, ListTodo, Pause, Play, RefreshCw, SquareCheck, Zap } from 'lucide-react'
 import { useAuth } from '../../auth/useAuth'
@@ -269,7 +270,7 @@ export default function DashboardPage() {
                     <input type="checkbox" className="task-check" checked={false} disabled={busy} aria-label={`Concluir tarefa: ${task.title}`} onChange={() => completeTask(task)} />
                     <Link to={`/tasks/${task.id}`} className="task-title">{task.title}</Link>
                     <span className="task-meta">
-                      <span className="project-tag" data-tone={task.projectId % 4}>{projects.get(task.projectId)?.name ?? 'Geral'}</span>
+                      <ProjectBadge project={projects.get(task.projectId)} />
                       {PRIORITY[task.priority] && (
                         <span className="priority"><span className="priority-dot" data-priority={task.priority} aria-hidden="true" />{PRIORITY[task.priority]}</span>
                       )}

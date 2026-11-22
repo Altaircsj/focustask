@@ -11,7 +11,19 @@ interface ProjectMapper {
 
     default Project toEntity(ProjectCreateDTO dto, Long userId) {
         if (dto == null) return null;
-        return new Project(userId, dto.name(), dto.description());
+        Project project = new Project(userId, dto.name(), dto.description());
+        project.updateAppearance(dto.color(), dto.tags());
+        return project;
+    }
+
+    @AfterMapping
+    default void applyUpdate(ProjectUpdateDTO dto, @MappingTarget Project entity) {
+        entity.updateAppearance(dto.color(), dto.tags());
+    }
+
+    @AfterMapping
+    default void applyPatch(ProjectPatchDTO dto, @MappingTarget Project entity) {
+        entity.updateAppearance(dto.color(), dto.tags());
     }
 
     @BeanMapping(ignoreByDefault = true)

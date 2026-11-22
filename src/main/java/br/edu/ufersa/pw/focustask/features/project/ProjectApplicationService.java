@@ -45,14 +45,14 @@ class ProjectApplicationService {
 
     @Transactional
     public ProjectResponseDTO update(Long userId, Long projectId, ProjectUpdateDTO dto) {
-        Project project = requireProject(userId, projectId);
+        Project project = requireForUpdate(userId, projectId);
         mapper.updateEntityFromDto(dto, project);
         return mapper.toResponse(project);
     }
 
     @Transactional
     public ProjectResponseDTO patch(Long userId, Long projectId, ProjectPatchDTO dto) {
-        Project project = requireProject(userId, projectId);
+        Project project = requireForUpdate(userId, projectId);
         mapper.patchEntityFromDto(dto, project);
         return mapper.toResponse(project);
     }
@@ -71,6 +71,10 @@ class ProjectApplicationService {
 
     private Project requireProject(Long userId, Long projectId) {
         return repository.findByIdAndUserId(projectId, userId).orElseThrow(() -> new EntidadeNaoEncontradaException("Project not found"));
+    }
+
+    private Project requireForUpdate(Long userId, Long projectId) {
+        return repository.findForUpdate(projectId, userId).orElseThrow(() -> new EntidadeNaoEncontradaException("Project not found"));
     }
 
     private void requireUser(Long userId) {

@@ -101,10 +101,7 @@
 .task-check { appearance: none; flex-shrink: 0; width: 20px; height: 20px; margin: 0; border: 2px solid var(--border); border-radius: 4px; background: var(--bg); cursor: pointer; }
 .task-check:hover:not(:disabled) { border-color: var(--brand); }
 
-.project-tag { --tone: var(--brand); padding: 4px 8px; border-radius: 6px; background: color-mix(in srgb, var(--tone) 8%, transparent); color: var(--tone); font-size: 11px; font-weight: 600; white-space: nowrap; }
-.project-tag[data-tone="1"] { --tone: #f59e0b; }
-.project-tag[data-tone="2"] { --tone: #10b981; }
-.project-tag[data-tone="3"] { --tone: #6b7280; }
+.project-tag { padding: 4px 8px; border-left: 3px solid var(--project-color); border-radius: 6px; background: color-mix(in srgb, var(--project-color) 14%, var(--bg)); color: var(--text-h); font-size: 11px; font-weight: 600; white-space: nowrap; }
 .priority { display: flex; align-items: center; gap: 6px; color: var(--text); font-size: 12px; }
 .priority-dot { width: 8px; height: 8px; border-radius: 50%; }
 .priority-dot[data-priority="HIGH"] { background: #ef4444; }

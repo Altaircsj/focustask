@@ -18,6 +18,8 @@ class ProjectMySqlTests extends MySqlIntegrationTest {
         long project = project(owner);
         long first = task(project);
         long second = task(project);
+        service.patch(owner, project, new ProjectPatchDTO(null, null, "#a855f7", java.util.List.of("UI/UX", "Férias")));
+        assertEquals(java.util.List.of("UI/UX", "Férias"), service.getAll(owner).getFirst().tags());
         long firstSession = session(owner, first);
         long secondSession = session(owner, second);
         long otherProject = project(owner);
@@ -27,6 +29,7 @@ class ProjectMySqlTests extends MySqlIntegrationTest {
         service.delete(owner, project);
 
         assertFalse(repository.existsById(project));
+        assertEquals(0, jdbc.queryForObject("select count(*) from project_tags where project_id=?", Integer.class, project));
         assertEquals(0, jdbc.queryForObject("select count(*) from tasks where project_id=?", Integer.class, project));
         assertNull(jdbc.queryForObject("select task_id from focus_sessions where id=?", Long.class, firstSession));
         assertNull(jdbc.queryForObject("select task_id from focus_sessions where id=?", Long.class, secondSession));

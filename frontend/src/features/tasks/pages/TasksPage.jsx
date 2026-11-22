@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import ProjectBadge from '../../projects/components/ProjectBadge'
 import { Link } from 'react-router'
 import { Plus } from 'lucide-react'
 import ActionMenu from '../../../components/ActionMenu'
@@ -107,7 +108,7 @@ export default function TasksPage() {
                       <input type="checkbox" className="task-check" checked={task.status === 'DONE'} disabled={busy} aria-label={`${task.status === 'DONE' ? 'Reabrir' : 'Concluir'} tarefa: ${task.title}`} onChange={() => toggle(task)} />
                       <Link to={`/tasks/${task.id}`}>{task.title}</Link>
                     </td>
-                    <td><span className="project-tag" data-tone={task.projectId % 4}>{projects.get(task.projectId)?.name ?? 'Geral'}</span></td>
+                    <td><ProjectBadge project={projects.get(task.projectId)} /></td>
                     <td>{PRIORITY_LABEL[task.priority] ? <span className="priority"><span className="priority-dot" data-priority={task.priority} aria-hidden="true" />{PRIORITY_LABEL[task.priority]}</span> : '—'}</td>
                     <td><span className="status-badge" data-status={task.status}>{STATUS_LABEL[task.status]}</span></td>
                     <td>{formatDueDate(task.dueDate)}</td>

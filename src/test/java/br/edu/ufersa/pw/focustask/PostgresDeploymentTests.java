@@ -65,6 +65,11 @@ class PostgresDeploymentTests {
         assertTrue(jdbc.queryForObject("select password_hash from users", String.class).startsWith("$2"));
         String user = "/api/v1/me";
         String project = create("/api/v1/projects", "{\"name\":\"Demo project\"}");
+        mvc.perform(auth(patch(project)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"color\":\"#a855f7\",\"tags\":[\" UI/UX \",\"Férias\"]}"))
+                .andExpect(status().isOk());
+        mvc.perform(auth(get(project))).andExpect(jsonPath("$.color").value("#A855F7"))
+                .andExpect(jsonPath("$.tags[0]").value("UI/UX")).andExpect(jsonPath("$.tags[1]").value("Férias"));
         String task = create("/api/v1/projects/" + id(project) + "/tasks", "{\"title\":\"Demo task\"}");
         mvc.perform(auth(patch(task)).contentType(MediaType.APPLICATION_JSON).content("{\"priority\":\"HIGH\"}"))
                 .andExpect(status().isOk());
@@ -88,7 +93,9 @@ class PostgresDeploymentTests {
         mvc.perform(auth(get(session))).andExpect(status().isOk())
                 .andExpect(jsonPath("$.taskId").isEmpty()).andExpect(jsonPath("$.status").value("COMPLETED"));
         mvc.perform(auth(delete(project))).andExpect(status().isNoContent());
+        create("/api/v1/projects", "{\"name\":\"Other\",\"tags\":[\"Development\"]}");
         mvc.perform(auth(delete(user))).andExpect(status().isNoContent());
+        assertEquals(0, jdbc.queryForObject("select count(*) from project_tags", Integer.class));
         assertEquals(0, jdbc.queryForObject("select count(*) from focus_sessions", Integer.class));
         assertEquals(0, jdbc.queryForObject("select count(*) from users", Integer.class));
     }

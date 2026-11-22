@@ -6,6 +6,7 @@ import ConfirmModal from '../../catalog/components/ConfirmModal'
 import { useAction, useCatalog } from '../../catalog/useCatalog'
 import { formatFocusedTime } from '../../dashboard/summary'
 import ProjectFormModal from '../components/ProjectFormModal'
+import { DEFAULT_COLOR } from '../appearance'
 import { projectService } from '../projectService'
 import { projectStats } from '../summary'
 import '../../dashboard/dashboard.css'
@@ -66,7 +67,7 @@ export default function ProjectsPage() {
           {data.projects.map((project) => {
             const stats = projectStats(project, data.tasks, data.sessions)
             return (
-              <li key={project.id} className="project-card">
+              <li key={project.id} className="project-card project-with-color" style={{ '--project-color': project.color ?? DEFAULT_COLOR }}>
                 <div className="project-card-header">
                   <Link to={`/projects/${project.id}`} className="project-card-title">{project.name}</Link>
                   <ActionMenu label={`Ações do projeto ${project.name}`} actions={MENU} onSelect={(action) => { reset(); setModal({ type: action === 'edit' ? 'form' : 'delete', project }) }} />

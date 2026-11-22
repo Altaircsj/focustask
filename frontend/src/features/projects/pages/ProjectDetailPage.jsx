@@ -80,6 +80,9 @@ export default function ProjectDetailPage() {
           <nav className="breadcrumb" aria-label="Você está em"><Link to="/projects">Projetos</Link><span aria-hidden="true">/</span><span aria-current="page">Detalhes</span></nav>
           <h1>Detalhes do Projeto - {project.name}</h1>
           <p>{project.description || 'Este projeto ainda não tem descrição.'}</p>
+          {project.tags?.length > 0 && <ul className="project-chips detail-tags" aria-label="Tags do projeto">
+            {project.tags.map((tag) => <li className="chip selected-tag" key={tag}>{tag}</li>)}
+          </ul>}
         </div>
         <div className="page-actions">
           <button type="button" className="dash-btn dash-btn-primary" onClick={() => open({ type: 'task' })}><Plus size={16} aria-hidden="true" />Nova Tarefa</button>

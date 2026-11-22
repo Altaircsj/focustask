@@ -4,6 +4,9 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 @Entity
@@ -25,6 +28,15 @@ class Project {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Column(nullable = false, length = 7)
+    private String color = ProjectAppearance.DEFAULT_COLOR;
+
+    @ElementCollection
+    @CollectionTable(name = "project_tags", joinColumns = @JoinColumn(name = "project_id"))
+    @OrderColumn(name = "tag_position")
+    @Column(name = "tag_text", nullable = false, length = 30)
+    private List<String> tags = new ArrayList<>();
+
     protected Project() {}
 
     Project(Long userId, String name, String description) {
@@ -37,6 +49,17 @@ class Project {
     public Long getUserId() { return userId; }
     public String getName() { return name; }
     public String getDescription() { return description; }
+
+    public String getColor() { return color; }
+    public List<String> getTags() { return tags; }
+
+    void updateAppearance(String color, List<String> tags) {
+        if (color != null) this.color = color.toUpperCase(Locale.ROOT);
+        if (tags != null) {
+            this.tags.clear();
+            tags.stream().map(ProjectAppearance::trimTag).forEach(this.tags::add);
+        }
+    }
 
     public void setName(String name) {
         if (name == null || name.isBlank() || name.length() > 255) {

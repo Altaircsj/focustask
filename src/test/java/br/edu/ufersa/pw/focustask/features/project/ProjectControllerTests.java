@@ -14,6 +14,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.stream.Stream;
 import static org.mockito.Mockito.*;
 import java.util.List;
+import java.util.Locale;
 import br.edu.ufersa.pw.focustask.features.project.dto.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -25,7 +26,7 @@ class ProjectControllerTests extends br.edu.ufersa.pw.focustask.AuthenticatedMvc
     @ParameterizedTest
     @MethodSource("validRequests")
     void validContractsDelegateAndReturnResponses(String method, String url, String body) throws Exception {
-        var saved = new ProjectResponseDTO(42L, 7L, "Study", null);
+        var saved = new ProjectResponseDTO(42L, 7L, "Study", null, "#4D49FC", List.of());
         switch (method) {
             case "POST" -> { when(service.create(eq(7L), any(ProjectCreateDTO.class))).thenReturn(saved); }
             case "PUT" -> when(service.update(eq(7L), eq(42L), any(ProjectUpdateDTO.class))).thenReturn(saved);
@@ -79,6 +80,34 @@ class ProjectControllerTests extends br.edu.ufersa.pw.focustask.AuthenticatedMvc
                 Arguments.of("POST", "/api/v1/projects", "{}"),
                 Arguments.of("PUT", "/api/v1/projects/42", "{}"),
                 Arguments.of("PATCH", "/api/v1/projects/42", "{\"name\":\" \"}"));
+    }
+
+    @ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"#4D49FC", "#F59E0B", "#10B981", "#EF4444", "#A855F7", "#06B6D4", "#E2E8F0"})
+    void acceptsPaletteAndInclusiveTagLimits(String color) throws Exception {
+        String lower = color.toLowerCase(Locale.ROOT);
+        String longTag = "🎨".repeat(30);
+        var tags = List.of("1", "2", "3", "4", "5", "6", "7", "8", "9", longTag);
+        String body = new tools.jackson.databind.ObjectMapper().writeValueAsString(
+                java.util.Map.of("name", "Projeto", "color", lower, "tags", tags));
+        when(service.create(eq(7L), any())).thenReturn(new ProjectResponseDTO(42L, 7L, "Projeto", null, color, tags));
+        mvc.perform(post("/api/v1/projects").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.tags.length()").value(10));
+        verify(service).create(7L, new ProjectCreateDTO("Projeto", null, lower, tags));
+    }
+
+    @Test
+    void rejectsAppearanceErrorsAtTheirFieldsBeforeWriting() throws Exception {
+        for (String tags : List.of("[null]", "[\"  \"]", "[\"UI/UX\", \" ui/ux \"]",
+                "[\"" + "é".repeat(31) + "\"]", "[\"0\",\"1\",\"2\",\"3\",\"4\",\"5\",\"6\",\"7\",\"8\",\"9\",\"10\"]")) {
+            mvc.perform(patch("/api/v1/projects/42").contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"color\":\"#EF4444\",\"tags\":" + tags + "}"))
+                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.errors.tags").isArray());
+        }
+        mvc.perform(post("/api/v1/projects").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Demo\",\"color\":\"#000000\"}"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.errors.color").isArray());
+        verifyNoInteractions(service);
     }
 
     @Test

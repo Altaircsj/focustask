@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import ProjectBadge from '../../projects/components/ProjectBadge'
 import { Link, useNavigate, useParams } from 'react-router'
 import { Pencil, Play, Trash2 } from 'lucide-react'
 import { catalogService, focusSessionService } from '../../focusSessions/focusSessionService'
@@ -89,7 +90,7 @@ export default function TaskDetailPage() {
   }
 
   const cards = [
-    { label: 'Projeto', value: <span className="project-tag" data-tone={task.projectId % 4}>{project?.name ?? 'Geral'}</span> },
+    { label: 'Projeto', value: <ProjectBadge project={project} /> },
     { label: 'Prioridade', value: PRIORITY_LABEL[task.priority] ? <span className="priority"><span className="priority-dot" data-priority={task.priority} aria-hidden="true" />{PRIORITY_LABEL[task.priority]}</span> : '—' },
     { label: 'Prazo de entrega', value: formatDueDate(task.dueDate) },
     { label: 'Tempo focado', value: formatFocusedTime(focusedSeconds) },

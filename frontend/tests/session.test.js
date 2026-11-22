@@ -146,7 +146,7 @@ function mockFocusApi(sessions, onOther, tasks = [{ id: 7, projectId: 3, title: 
     if (path === '/me') return Response.json(user)
     if (path === '/focus-sessions' && options.method === 'GET') return Response.json(sessions)
     if (path === '/tasks' && options.method === 'GET') return Response.json(tasks)
-    if (path === '/projects') return Response.json([{ id: 3, name: 'Redesign App' }])
+    if (path === '/projects') return Response.json([{ id: 3, name: 'Redesign App', color: '#E2E8F0' }])
     return onOther?.(path, options) ?? new Response(null, { status: 404 })
   })
 }
@@ -732,7 +732,7 @@ test('excluir a conta pede confirmação, envia DELETE /me e volta ao login', as
   assert.equal(window.location.pathname, '/login')
 })
 
-const catalogProject = { id: 3, userId: 1, name: 'Redesign App', description: 'App de produtividade' }
+const catalogProject = { id: 3, userId: 1, name: 'Redesign App', description: 'App de produtividade', color: '#E2E8F0', tags: ['Development'] }
 const catalogSessions = [{ ...focusSession, id: 1, taskId: 1, projectId: null, status: 'COMPLETED', startedAt: '2026-02-26T09:30:00Z', endedAt: '2026-02-26T09:55:00Z' }]
 
 function mockCatalogApi(onOther) {
@@ -753,16 +753,29 @@ function mockCatalogApi(onOther) {
 
 const buttonByText = (text) => [...document.querySelectorAll('button')].find((button) => button.textContent === text)
 
+for (const route of ['/dashboard', '/tasks', '/tasks/7']) {
+  test(`o indicador de projeto em ${route} usa a cor da API`, async () => {
+    mockTaskApi([])
+    window.history.pushState({}, '', route)
+    await openApp()
+    await settle()
+    const badge = document.querySelector('.project-tag')
+    assert.equal(badge.textContent, 'Redesign App')
+    assert.equal(badge.style.getPropertyValue('--project-color'), '#E2E8F0')
+  })
+}
+
 test('a lista de projetos mostra progresso, tarefas e tempo focado, e cria um projeto', async () => {
   const calls = []
   mockCatalogApi((path, options) => {
     calls.push([options.method, path, options.body])
-    return Response.json({ id: 8, userId: 1, name: 'Novo app', description: '' }, { status: 201 })
+    return Response.json({ id: 8, userId: 1, ...JSON.parse(options.body) }, { status: 201 })
   })
   window.history.pushState({}, '', '/projects')
   await openApp()
   await settle()
   const card = document.querySelector('.project-card')
+  assert.equal(card.style.getPropertyValue('--project-color'), '#E2E8F0')
   assert.match(card.textContent, /Redesign App/)
   assert.match(card.textContent, /33%/)
   assert.match(card.textContent, /1\/3 tarefas/)
@@ -771,13 +784,68 @@ test('a lista de projetos mostra progresso, tarefas e tempo focado, e cria um pr
   await act(() => buttonByText('Novo Projeto').click())
   assert.equal(document.querySelector('[role="dialog"] h2').textContent, 'Criar Novo Projeto')
   assert.equal(buttonByText('Salvar Projeto').disabled, true)
+  assert.equal(document.querySelector('input[aria-label="Índigo"]').checked, true)
+  assert.equal(document.querySelectorAll('[name="project-color"]').length, 7)
   await typeInto('#project-name', 'Novo app')
+  await click(document.querySelector('input[aria-label="Roxo"]'))
+  await click(buttonByText('UI/UX'))
+  await click(buttonByText('Nova Tag'))
+  await typeInto('#project-tag-input', ' ui/ux ')
+  await click(buttonByText('Adicionar'))
+  assert.match(document.querySelector('#project-tag-error').textContent, /já foi adicionada/)
+  await typeInto('#project-tag-input', ' Férias  2026 ')
+  await act(() => {
+    const input = document.querySelector('#project-tag-input')
+    input.dispatchEvent(new window.FocusEvent('focusin', { bubbles: true }))
+    input.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+  })
+  assert.equal(calls.length, 0)
   await act(() => buttonByText('Salvar Projeto').click())
   await settle()
-  assert.deepEqual(calls, [['POST', '/projects', JSON.stringify({ name: 'Novo app', description: '' })]])
+  assert.deepEqual(calls, [['POST', '/projects', JSON.stringify({ name: 'Novo app', description: '', color: '#A855F7', tags: ['UI/UX', 'Férias  2026'] })]])
   assert.equal(document.querySelector('[role="dialog"]'), null)
   assert.equal(document.querySelectorAll('.projects-grid .project-card:not(.project-card-empty)').length, 2)
 })
+
+for (const route of ['/projects', '/projects/3']) {
+  test(`edição por ${route} conserva ou descarta o rascunho conforme o resultado`, async () => {
+    const calls = []
+    mockCatalogApi((path, options) => {
+      calls.push([path, options.method, JSON.parse(options.body)])
+      if (calls.length === 1) return new Response(null, { status: 503 })
+      return Response.json({ ...catalogProject, ...JSON.parse(options.body) })
+    })
+    window.history.pushState({}, '', route)
+    await openApp()
+    await settle()
+    const edit = async () => {
+      if (route === '/projects') {
+        await click(document.querySelector('.project-card .row-menu-trigger'))
+        await click(buttonByText('Editar'))
+      } else await click(buttonByText('Editar Projeto'))
+    }
+    await edit()
+    assert.equal(document.querySelector('[aria-label="Cinza-claro"]').checked, true)
+    await click(document.querySelector('[aria-label="Remover Development"]'))
+    await click(buttonByText('Cancelar'))
+    assert.equal(calls.length, 0)
+    await edit()
+    assert.ok(document.querySelector('[aria-label="Remover Development"]'))
+    await click(document.querySelector('[aria-label="Remover Development"]'))
+    await click(document.querySelector('[aria-label="Roxo"]'))
+    await click(buttonByText('Salvar Projeto'))
+    assert.ok(document.querySelector('[role="dialog"] [role="alert"]'))
+    assert.equal(document.querySelector('[aria-label="Roxo"]').checked, true)
+    await click(buttonByText('Salvar Projeto'))
+    assert.deepEqual(calls[1], calls[0])
+    assert.equal(calls[1][1], 'PATCH')
+    assert.deepEqual(calls[1][2].tags, [])
+    assert.equal(document.querySelector('[role="dialog"]'), null)
+    await edit()
+    assert.equal(document.querySelector('[aria-label="Roxo"]').checked, true)
+    assert.equal(document.querySelector('[aria-label="Remover Development"]'), null)
+  })
+}
 
 test('excluir um projeto pede confirmação e remove o cartão', async () => {
   const calls = []
