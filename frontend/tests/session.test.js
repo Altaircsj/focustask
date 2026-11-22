@@ -167,6 +167,29 @@ test('o histórico mostra duração, tarefa, projeto e tipo, e filtra por tipo',
   assert.match(rowsText()[0], /Avulsa/)
 })
 
+test('o histórico ordena os filtros como no Figma e permite editar uma sessão em andamento', async () => {
+  const running = { ...focusSession, id: 5, taskId: null, projectId: null, title: null, plannedMinutes: 25, status: 'RUNNING', startedAt: new Date(Date.now() - 60000).toISOString(), endedAt: null }
+  const calls = []
+  mockFocusApi([running], (path, options) => {
+    calls.push([options.method, path, options.body])
+    return Response.json({ ...running, title: 'Estudar' })
+  })
+  window.history.pushState({}, '', '/focus-sessions')
+  await openApp()
+  await settle()
+  assert.deepEqual([...document.querySelectorAll('.filter-chip')].map((chip) => chip.textContent), ['Todas', 'Avulsa', 'Projeto', 'Tarefa'])
+  await act(() => document.querySelector('.row-menu-trigger').click())
+  const items = [...document.querySelectorAll('.row-menu-list button')].map((button) => button.textContent)
+  assert.deepEqual(items, ['Editar', 'Pausar', 'Concluir', 'Excluir'])
+  await act(() => document.querySelector('.row-menu-list button').click())
+  assert.equal(document.querySelector('[role="dialog"] h2').textContent, 'Editar Sessão de Foco')
+  await act(() => [...document.querySelectorAll('button')].find((button) => button.textContent === 'Salvar alterações').click())
+  await settle()
+  assert.deepEqual(calls.map(([method, path]) => [method, path]), [['PATCH', '/focus-sessions/5']])
+  assert.equal(document.querySelector('[role="dialog"]'), null)
+  assert.match(rowsText()[0], /Estudar/)
+})
+
 test('concluir uma sessão em andamento envia PATCH e atualiza a linha', async () => {
   const running = { ...focusSession, id: 5, taskId: null, status: 'RUNNING', startedAt: new Date(Date.now() - 60000).toISOString(), endedAt: null }
   const calls = []
@@ -494,4 +517,76 @@ test('desmontar o provedor cancela uma recuperação em andamento', async () => 
   assert.ok(signal.aborted)
   await act(() => profile.resolve(new Response(null, { status: 401 })))
   assert.equal(sessionStorage.getItem(tokenKey), 'valido')
+})
+
+const detailTask = { id: 7, projectId: 3, title: 'Revisar protótipo', description: 'Alta fidelidade', status: 'TODO', priority: 'HIGH', dueDate: null }
+
+function mockTaskApi(sessions, onOther) {
+  mockFocusApi(sessions, (path, options) => {
+    if (path === '/tasks/7' && options.method === 'GET') return Response.json(detailTask)
+    return onOther?.(path, options)
+  })
+}
+
+test('os detalhes da tarefa mostram os dados, o histórico e iniciam uma sessão para ela', async () => {
+  const calls = []
+  mockTaskApi(history, (path, options) => {
+    calls.push([options.method, path, options.body])
+    return Response.json({ ...focusSession, id: 20, taskId: 7, status: 'RUNNING', startedAt: new Date().toISOString(), endedAt: null }, { status: 201 })
+  })
+  window.history.pushState({}, '', '/tasks/7')
+  await openApp()
+  await settle()
+  assert.equal(document.querySelector('h1').textContent, 'Revisar protótipo')
+  const facts = [...document.querySelectorAll('.task-facts .stat-card')].map((card) => card.textContent)
+  assert.deepEqual(facts, ['ProjetoRedesign App', 'PrioridadeAlta', 'Prazo de entregaSem prazo', 'Tempo focado25m'])
+  assert.equal(document.querySelectorAll('.sessions-table tbody tr').length, 1)
+  await act(() => [...document.querySelectorAll('button')].find((button) => button.textContent === 'Iniciar sessão para esta tarefa').click())
+  await settle()
+  assert.deepEqual(calls, [['POST', '/focus-sessions', JSON.stringify({ taskId: 7, plannedMinutes: 25 })]])
+  assert.equal(window.location.pathname, '/dashboard')
+})
+
+test('com outra sessão ativa não é possível iniciar uma nova pela tarefa', async () => {
+  const running = { ...focusSession, id: 5, taskId: null, status: 'RUNNING', startedAt: new Date(Date.now() - 60000).toISOString(), endedAt: null }
+  mockTaskApi([running])
+  window.history.pushState({}, '', '/tasks/7')
+  await openApp()
+  await settle()
+  assert.equal(document.querySelector('button[aria-label="Iniciar sessão para esta tarefa"]').disabled, true)
+  assert.match(document.querySelector('.task-timer').textContent, /Já existe uma sessão em andamento/)
+})
+
+test('editar a tarefa envia PATCH e excluir remove e volta para a lista', async () => {
+  const calls = []
+  mockTaskApi([], (path, options) => {
+    calls.push([options.method, path, options.body])
+    return options.method === 'DELETE' ? new Response(null, { status: 204 }) : Response.json({ ...detailTask, title: 'Novo título' })
+  })
+  window.history.pushState({}, '', '/tasks/7')
+  await openApp()
+  await settle()
+  const byText = (text) => [...document.querySelectorAll('button')].find((button) => button.textContent === text)
+  await act(() => byText('Editar').click())
+  assert.equal(document.querySelector('[role="dialog"] h2').textContent, 'Editar Tarefa')
+  await act(() => byText('Salvar alterações').click())
+  await settle()
+  assert.equal(calls[0][0], 'PATCH')
+  assert.equal(calls[0][1], '/tasks/7')
+  assert.equal(JSON.parse(calls[0][2]).priority, 'HIGH')
+  assert.equal(document.querySelector('h1').textContent, 'Novo título')
+  await act(() => byText('Excluir').click())
+  await act(() => byText('Excluir tarefa').click())
+  await settle()
+  assert.deepEqual(calls[1], ['DELETE', '/tasks/7', undefined])
+  assert.equal(window.location.pathname, '/tasks')
+})
+
+test('uma tarefa inexistente mostra o aviso e o caminho de volta', async () => {
+  mockFocusApi([], (path) => (path === '/tasks/99' ? Response.json({ message: 'Not found' }, { status: 404 }) : undefined))
+  window.history.pushState({}, '', '/tasks/99')
+  await openApp()
+  await settle()
+  assert.match(document.querySelector('[role="alert"]').textContent, /Tarefa não encontrada/)
+  assert.equal(document.querySelector('a[href="/tasks"].dash-btn').textContent, 'Voltar às tarefas')
 })

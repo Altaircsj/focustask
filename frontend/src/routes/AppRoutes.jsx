@@ -5,6 +5,7 @@ import RegisterPage from '../features/auth/pages/RegisterPage'
 import { useAuth } from '../features/auth/useAuth'
 import DashboardPage from '../features/dashboard/pages/DashboardPage'
 import FocusSessionsPage from '../features/focusSessions/pages/FocusSessionsPage'
+import TaskDetailPage from '../features/tasks/pages/TaskDetailPage'
 import NewFocusSessionPage from '../features/focusSessions/pages/NewFocusSessionPage'
 
 function PlaceholderPage({ titulo }) {
@@ -23,7 +24,7 @@ export default function AppRoutes() {
         <Route path="/projects" element={<PlaceholderPage titulo="Projetos" />} />
         <Route path="/projects/:projectId" element={<PlaceholderPage titulo="Detalhes do projeto" />} />
         <Route path="/tasks" element={<PlaceholderPage titulo="Tarefas" />} />
-        <Route path="/tasks/:taskId" element={<PlaceholderPage titulo="Detalhes da tarefa" />} />
+        <Route path="/tasks/:taskId" element={<TaskDetailPage />} />
         <Route path="/focus-sessions" element={<FocusSessionsPage />} />
         <Route path="/focus-sessions/new" element={<NewFocusSessionPage />} />
         <Route path="/profile" element={<PlaceholderPage titulo="Perfil" />} />

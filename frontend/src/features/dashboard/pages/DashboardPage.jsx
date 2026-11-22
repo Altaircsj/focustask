@@ -267,7 +267,7 @@ export default function DashboardPage() {
                 {tasks.map((task) => (
                   <li key={task.id} className="task-row">
                     <input type="checkbox" className="task-check" checked={false} disabled={busy} aria-label={`Concluir tarefa: ${task.title}`} onChange={() => completeTask(task)} />
-                    <span className="task-title">{task.title}</span>
+                    <Link to={`/tasks/${task.id}`} className="task-title">{task.title}</Link>
                     <span className="task-meta">
                       <span className="project-tag" data-tone={task.projectId % 4}>{projects.get(task.projectId)?.name ?? 'Geral'}</span>
                       {PRIORITY[task.priority] && (

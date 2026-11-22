@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { activeSeconds, formatDuration, formatStartedAt } from '../../focusSessions/format'
 import Modal from './Modal'
 
-export default function CompletedSessionModal({ session, tasks, projects, busy, error, onSave, onClose }) {
+export default function CompletedSessionModal({ session, tasks, projects, busy, error, onSave, onClose, heading = 'Sessão concluída', subtitle = 'Ótimo trabalho! Revise os dados antes de salvar.' }) {
   const task = tasks.find((item) => item.id === session.taskId)
   const [title, setTitle] = useState(session.title ?? '')
   const [mode, setMode] = useState(session.taskId != null ? 'Tarefa' : session.projectId != null ? 'Projeto' : 'Avulsa')
@@ -19,7 +19,7 @@ export default function CompletedSessionModal({ session, tasks, projects, busy, 
   }
 
   return (
-    <Modal title="Sessão concluída" subtitle="Ótimo trabalho! Revise os dados antes de salvar." onClose={onClose}>
+    <Modal title={heading} subtitle={subtitle} onClose={onClose}>
       <form onSubmit={(event) => { event.preventDefault(); if (valid && !busy) save(mode) }} aria-busy={busy}>
         <fieldset className="focus-fields" disabled={busy}>
           <div className="form-field">

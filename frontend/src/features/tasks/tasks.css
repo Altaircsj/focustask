@@ -1,0 +1,13 @@
+.task-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.task-header p { margin-top: 4px; color: var(--text); }
+.task-page-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.breadcrumb { display: flex; gap: 8px; margin-bottom: 4px; color: var(--text); font-size: 13px; }
+.dashboard-page .breadcrumb a { color: var(--text); font-weight: 400; }
+.breadcrumb [aria-current] { color: var(--brand); }
+.task-facts .stat-card { min-height: 0; }
+.task-facts .stat-card dd { font-size: 14px; font-weight: 600; text-transform: none; }
+.dash-btn-danger,
+.dashboard-page a.dash-btn-danger { border-color: #ef4444; color: #ef4444; }
+.task-timer .timer-ring { width: 212px; height: 212px; padding: 0; justify-content: center; border-radius: 50%; }
+.task-timer .timer-clock { font-size: 48px; }
+.task-page .sessions-table { width: 100%; }

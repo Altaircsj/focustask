@@ -2,7 +2,7 @@
 
 React, JavaScript, Vite e React Router. Cadastro e login usam a API real; o painel
 mostra saudação, resumo do dia, cronômetro de foco e tarefas do dia. As sessões de foco têm histórico e criação
-com a API real. Projetos, tarefas e perfil estão protegidos, mas seus CRUDs ainda não
+com a API real. Os detalhes de uma tarefa (`/tasks/:taskId`) já funcionam. Projetos, lista de tarefas e perfil estão protegidos, mas seus CRUDs ainda não
 foram implementados.
 
 ## Ambiente local
@@ -113,6 +113,11 @@ este trabalho. Não houve deploy ou teste do serviço remoto.
 | `src/features/dashboard/dashboard.css` | Estilos específicos do painel |
 | `src/features/focusSessions/pages/FocusSessionsPage.jsx` | Histórico em `/focus-sessions`: filtros Todas/Avulsa/Tarefa, pausar, retomar, concluir e excluir |
 | `src/features/focusSessions/pages/NewFocusSessionPage.jsx` | Criação em `/focus-sessions/new`: projeto e tarefa opcionais; sem tarefa a sessão é avulsa |
+| `src/features/tasks/pages/TaskDetailPage.jsx` | Detalhes da tarefa em `/tasks/:taskId`: dados, histórico de sessões, iniciar sessão, editar e excluir |
+| `src/features/tasks/components/EditTaskModal.jsx` | Modal "Editar Tarefa" (título, descrição, status, prioridade, prazo) |
+| `src/features/tasks/taskService.js` | `GET`, `PATCH` e `DELETE` de `/tasks/{id}` |
+| `src/features/tasks/format.js` | Rótulos de status e prioridade e formatação do prazo |
+| `src/features/tasks/tasks.css` | Estilos específicos dos detalhes da tarefa |
 | `src/features/focusSessions/focusSessionService.js`, `format.js` | Chamadas à API e cálculo/formatação da duração (descontando pausas) |
 | `src/features/focusSessions/focus-sessions.css` | Estilos das duas páginas de sessões |
 | `src/layouts/AppLayout.jsx`, `src/layouts/app-layout.css` | Estrutura das rotas autenticadas: menu lateral à esquerda e a página (`Outlet`) ao lado |

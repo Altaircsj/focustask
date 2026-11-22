@@ -3,18 +3,23 @@ import { Link } from 'react-router'
 import { Menu } from 'lucide-react'
 import { catalogService, focusSessionService } from '../focusSessionService'
 import { activeSeconds, formatDuration, formatStartedAt } from '../format'
+import { DEFAULT_MINUTES } from '../../dashboard/summary'
+import { loadMinutes } from '../../dashboard/dashboardService'
+import CompletedSessionModal from '../../dashboard/components/CompletedSessionModal'
+import EditFocusModal from '../../dashboard/components/EditFocusModal'
+import '../../dashboard/dashboard.css'
 import '../focus-sessions.css'
 
 const FILTERS = [
   { id: 'all', label: 'Todas' },
   { id: 'standalone', label: 'Avulsa' },
-  { id: 'task', label: 'Tarefa' },
   { id: 'project', label: 'Projeto' },
+  { id: 'task', label: 'Tarefa' },
 ]
 const STATUS_LABEL = { RUNNING: 'Em andamento', PAUSED: 'Pausada' }
 
 function rowActions(session) {
-  const actions = []
+  const actions = [{ id: 'edit', label: 'Editar' }]
   if (session.status === 'RUNNING') actions.push({ id: 'PAUSED', label: 'Pausar' })
   if (session.status === 'PAUSED') actions.push({ id: 'RUNNING', label: 'Retomar' })
   if (session.status !== 'COMPLETED') actions.push({ id: 'COMPLETED', label: 'Concluir' })
@@ -29,6 +34,9 @@ export default function FocusSessionsPage() {
   const [menuId, setMenuId] = useState(null)
   const [actionError, setActionError] = useState('')
   const [now, setNow] = useState(() => Date.now())
+  const [editing, setEditing] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [editError, setEditError] = useState('')
 
   useEffect(() => {
     const controller = new AbortController()
@@ -82,6 +90,11 @@ export default function FocusSessionsPage() {
   async function runAction(session, action) {
     setMenuId(null)
     setActionError('')
+    if (action === 'edit') {
+      setEditError('')
+      setEditing(session)
+      return
+    }
     if (action === 'delete' && !window.confirm('Excluir esta sessão? Essa ação não pode ser desfeita.')) return
     try {
       if (action === 'delete') {
@@ -95,6 +108,23 @@ export default function FocusSessionsPage() {
       setActionError(error.message)
     }
   }
+
+  async function saveEdit(details) {
+    if (saving) return
+    setSaving(true)
+    setEditError('')
+    try {
+      const updated = await focusSessionService.update(editing.id, details)
+      setData((current) => ({ ...current, sessions: current.sessions.map((item) => (item.id === updated.id ? updated : item)) }))
+      setEditing(null)
+    } catch (error) {
+      setEditError(error.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const closeEdit = () => { if (!saving) setEditing(null) }
 
   return (
     <main className="sessions-page">
@@ -177,6 +207,16 @@ export default function FocusSessionsPage() {
             </table>
           )}
         </>
+      )}
+      {data.status === 'ready' && editing && (
+        <div className="dashboard-page modal-host">
+          {editing.status === 'COMPLETED' ? (
+            <CompletedSessionModal key={editing.id} session={editing} projects={data.projects} tasks={data.tasks} busy={saving} error={editError} onSave={saveEdit} onClose={closeEdit}
+              heading="Editar Sessão de Foco" subtitle="Atualize o título e a associação da sessão." />
+          ) : (
+            <EditFocusModal session={editing} projects={data.projects} tasks={data.tasks} minutes={loadMinutes(DEFAULT_MINUTES)} busy={saving} error={editError} onSave={saveEdit} onClose={closeEdit} />
+          )}
+        </div>
       )}
     </main>
   )
