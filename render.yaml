@@ -5,7 +5,7 @@ services:
     name: focustask
     runtime: docker
     plan: free
-    region: oregon
+    region: virginia
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /actuator/health
