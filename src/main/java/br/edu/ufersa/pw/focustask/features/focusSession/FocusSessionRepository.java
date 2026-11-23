@@ -20,6 +20,12 @@ interface FocusSessionRepository extends JpaRepository<FocusSession, Long> {
     @Query("select s from FocusSession s where s.id = :id and s.userId = :userId")
     Optional<FocusSession> findForUpdate(@Param("id") Long id, @Param("userId") Long userId);
 
+    /** Leitura com bloqueio das sessões do usuário num estado; a ordem por id mantém o bloqueio determinístico. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select s from FocusSession s where s.userId = :userId and s.status = :status order by s.id")
+    List<FocusSession> findAllForUpdateByUserIdAndStatus(@Param("userId") Long userId,
+                                                         @Param("status") FocusSessionStatus status);
+
     @Transactional(propagation = Propagation.MANDATORY)
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("update FocusSession s set s.taskId = null where s.userId = :userId and s.taskId in :taskIds")

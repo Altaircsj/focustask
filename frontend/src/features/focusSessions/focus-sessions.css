@@ -67,7 +67,7 @@
 .col-duration { width: 120px; }
 .col-project { width: 150px; }
 .col-type { width: 100px; }
-.col-actions { width: 40px; }
+.col-actions { width: 220px; }
 
 .session-status { display: block; margin-top: 2px; color: var(--brand); font-size: 11px; font-weight: 600; }
 
@@ -135,3 +135,27 @@
   .sessions-page { padding: 24px 16px; }
   .sessions-header { flex-direction: column; align-items: flex-start; }
 }
+
+.session-link { color: var(--brand); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.session-link:hover { text-decoration-thickness: 2px; }
+.session-link:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 4px; }
+
+.row-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+.row-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.row-control:hover:not(:disabled) { background: var(--brand-bg); color: var(--brand); }
+.row-control:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.row-control:disabled { opacity: 0.5; cursor: not-allowed; }
+.row-done { color: var(--text); font-size: 12px; font-weight: 600; }

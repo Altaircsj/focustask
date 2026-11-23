@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router'
 import { Pencil, Play, Trash2 } from 'lucide-react'
 import { catalogService, focusSessionService } from '../../focusSessions/focusSessionService'
 import { activeSeconds, formatDuration, formatStartedAt } from '../../focusSessions/format'
+import { sessionLink } from '../../focusSessions/sessionInfo'
 import { DEFAULT_MINUTES, formatClock } from '../../dashboard/summary'
 import { loadMinutes } from '../../dashboard/dashboardService'
 import Modal from '../../dashboard/components/Modal'
@@ -56,13 +57,12 @@ export default function TaskDetailPage() {
   const task = ready ? data.task : null
   const project = ready ? data.projects.find((item) => item.id === task.projectId) : null
   const history = ready ? data.sessions.filter((session) => session.taskId === task.id).sort((a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt)) : []
-  const active = ready && data.sessions.some((session) => session.status !== 'COMPLETED')
   const focusedSeconds = history.reduce((total, session) => total + activeSeconds(session), 0)
   const minutes = loadMinutes(DEFAULT_MINUTES)
   const closeModal = () => { if (!working.current) { setModal(null); setActionError('') } }
 
   function startSession() {
-    perform(() => focusSessionService.create({ taskId: task.id, plannedMinutes: minutes }), () => navigate('/dashboard'))
+    perform(() => focusSessionService.create({ taskId: task.id, plannedMinutes: minutes }), (session) => navigate(sessionLink(session.id)))
   }
 
   function saveTask(details) {
@@ -124,9 +124,8 @@ export default function TaskDetailPage() {
           <p className="timer-clock">{formatClock(minutes * 60)}</p>
           <span className="timer-badge">Foco #{history.length + 1}</span>
         </div>
-        <button type="button" className="timer-play" aria-label="Iniciar sessão para esta tarefa" disabled={active || busy} onClick={startSession}><Play size={24} aria-hidden="true" /></button>
-        <button type="button" className="dash-btn dash-btn-primary" disabled={active || busy} onClick={startSession}>Iniciar sessão para esta tarefa</button>
-        {active && <p className="tasks-empty">Já existe uma sessão em andamento. Conclua-a no <Link to="/dashboard">Painel</Link> para iniciar outra.</p>}
+        <button type="button" className="timer-play" aria-label="Iniciar sessão para esta tarefa" disabled={busy} onClick={startSession}><Play size={24} aria-hidden="true" /></button>
+        <button type="button" className="dash-btn dash-btn-primary" disabled={busy} onClick={startSession}>Iniciar sessão para esta tarefa</button>
         {actionError && !modal && <p role="alert">{actionError}</p>}
       </section>
 

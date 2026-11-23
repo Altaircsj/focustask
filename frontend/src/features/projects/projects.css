@@ -52,3 +52,18 @@
   .project-task-grid .task-state-track[data-status="IN_PROGRESS"] { animation: task-state-stripes 2s linear infinite; }
 }
 @keyframes task-state-stripes { to { background-position: 16px 0; } }
+
+.project-sessions-section { display: flex; flex-direction: column; gap: 16px; margin-top: 32px; }
+.project-sessions { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.project-session-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.project-session-row > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.project-session-row strong { overflow: hidden; color: var(--text-h); text-overflow: ellipsis; white-space: nowrap; }
+.project-session-row span { color: var(--text); font-size: 13px; }

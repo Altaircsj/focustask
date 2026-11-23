@@ -180,7 +180,7 @@ test('o histórico ordena os filtros como no Figma e permite editar uma sessão 
   assert.deepEqual([...document.querySelectorAll('.filter-chip')].map((chip) => chip.textContent), ['Todas', 'Avulsa', 'Projeto', 'Tarefa'])
   await act(() => document.querySelector('.row-menu-trigger').click())
   const items = [...document.querySelectorAll('.row-menu-list button')].map((button) => button.textContent)
-  assert.deepEqual(items, ['Editar', 'Pausar', 'Concluir', 'Excluir'])
+  assert.deepEqual(items, ['Editar', 'Excluir'])
   await act(() => document.querySelector('.row-menu-list button').click())
   assert.equal(document.querySelector('[role="dialog"] h2').textContent, 'Editar Sessão de Foco')
   await act(() => [...document.querySelectorAll('button')].find((button) => button.textContent === 'Salvar alterações').click())
@@ -201,8 +201,7 @@ test('concluir uma sessão em andamento envia PATCH e atualiza a linha', async (
   await openApp()
   await settle()
   assert.match(rowsText()[0], /Em andamento/)
-  await act(() => document.querySelector('.row-menu-trigger').click())
-  await act(() => [...document.querySelectorAll('.row-menu-list button')].find((button) => button.textContent === 'Concluir').click())
+  await act(() => document.querySelector('button[aria-label="Concluir sessão: Sessão avulsa"]').click())
   await settle()
   assert.deepEqual(calls, [['PATCH', '/focus-sessions/5', JSON.stringify({ status: 'COMPLETED' })]])
   assert.doesNotMatch(rowsText()[0], /Em andamento/)
@@ -252,8 +251,10 @@ test('o painel mostra saudação, resumo, cronômetro e as tarefas do dia', asyn
   assert.match(document.querySelector('h1').textContent, /^(Bom dia|Boa tarde|Boa noite), Conta$/)
   const stats = [...document.querySelectorAll('.stat-card')].map((card) => card.textContent)
   assert.deepEqual(stats.map((text) => text.replace(/^.*?(Tempo Focado|Sessões Concluídas|Tarefas Concluídas|Tarefas Pendentes)/, '$1')), ['Tempo Focado1m', 'Sessões Concluídas1', 'Tarefas Concluídas1', 'Tarefas Pendentes2'])
-  assert.equal(document.querySelector('[role="timer"]').textContent, '25:00')
-  assert.match(document.querySelector('.timer-badge').textContent, /Foco #2/)
+  // Sem sessão rodando, o Painel mostra a última que recebeu Play, mesmo concluída, com a ação Novo foco.
+  assert.equal(document.querySelector('[role="timer"]').textContent, '01:00')
+  assert.equal(document.querySelector('.timer-badge').textContent, 'Foco #1 · Concluído')
+  assert.ok([...document.querySelectorAll('button')].some((button) => button.textContent === 'Novo foco'))
   const rows = [...document.querySelectorAll('.task-row')].map((row) => row.textContent)
   assert.equal(rows.length, 1)
   assert.match(rows[0], /Revisar protótipo.*Redesign App.*Alta/)
@@ -272,7 +273,7 @@ test('iniciar um foco avulso cria a sessão e troca o botão para pausar', async
   await settle()
   assert.deepEqual(calls, [['POST', '/focus-sessions', JSON.stringify({ taskId: null, plannedMinutes: 25 })]])
   assert.ok(document.querySelector('button[aria-label="Pausar"]'))
-  assert.equal([...document.querySelectorAll('button')].find((button) => button.textContent === 'Foco avulso').disabled, true)
+  assert.equal([...document.querySelectorAll('button')].find((button) => button.textContent === 'Foco avulso').disabled, false)
 })
 
 test('"Foco com tarefa" abre o modal e inicia a sessão com a tarefa e a duração escolhidas', async () => {
@@ -546,17 +547,25 @@ test('os detalhes da tarefa mostram os dados, o histórico e iniciam uma sessão
   await act(() => [...document.querySelectorAll('button')].find((button) => button.textContent === 'Iniciar sessão para esta tarefa').click())
   await settle()
   assert.deepEqual(calls, [['POST', '/focus-sessions', JSON.stringify({ taskId: 7, plannedMinutes: 25 })]])
-  assert.equal(window.location.pathname, '/dashboard')
+  assert.equal(window.location.pathname + window.location.search, '/dashboard?sessao=20')
 })
 
-test('com outra sessão ativa não é possível iniciar uma nova pela tarefa', async () => {
+test('com outra sessão aberta ainda é possível iniciar uma pela tarefa e abrir o Painel nela', async () => {
   const running = { ...focusSession, id: 5, taskId: null, status: 'RUNNING', startedAt: new Date(Date.now() - 60000).toISOString(), endedAt: null }
-  mockTaskApi([running])
+  const calls = []
+  mockTaskApi([running], (path, options) => {
+    calls.push([options.method, path, options.body])
+    return Response.json({ ...focusSession, id: 21, taskId: 7, status: 'RUNNING', startedAt: new Date().toISOString(), lastActivatedAt: new Date().toISOString(), endedAt: null }, { status: 201 })
+  })
   window.history.pushState({}, '', '/tasks/7')
   await openApp()
   await settle()
-  assert.equal(document.querySelector('button[aria-label="Iniciar sessão para esta tarefa"]').disabled, true)
-  assert.match(document.querySelector('.task-timer').textContent, /Já existe uma sessão em andamento/)
+  assert.equal(document.querySelector('button[aria-label="Iniciar sessão para esta tarefa"]').disabled, false)
+  assert.doesNotMatch(document.querySelector('.task-timer').textContent, /Já existe uma sessão/)
+  await act(() => document.querySelector('button[aria-label="Iniciar sessão para esta tarefa"]').click())
+  await settle()
+  assert.deepEqual(calls, [['POST', '/focus-sessions', JSON.stringify({ taskId: 7, plannedMinutes: 25 })]])
+  assert.equal(window.location.pathname + window.location.search, '/dashboard?sessao=21')
 })
 
 test('editar a tarefa envia PATCH e excluir remove e volta para a lista', async () => {
@@ -1091,4 +1100,306 @@ test('a lista de tarefas filtra por status, conclui pelo checkbox e exclui', asy
   await settle()
   assert.deepEqual(calls[1], ['DELETE', '/tasks/1', undefined])
   assert.equal(titles().includes('Revisar protótipo'), false)
+})
+
+// --- Plano A: várias sessões abertas, uma só contando tempo ---
+
+const ago = (minutes) => new Date(Date.now() - minutes * 60000).toISOString()
+const flowA = () => ({ ...focusSession, id: 11, title: 'Foco A', taskId: null, projectId: null, plannedMinutes: 60, status: 'RUNNING', startedAt: ago(20), lastActivatedAt: ago(10), endedAt: null })
+const flowB = () => ({ ...focusSession, id: 12, title: 'Foco B', taskId: 7, projectId: null, plannedMinutes: 25, status: 'PAUSED', startedAt: ago(40), lastActivatedAt: ago(40), pausedAt: ago(30), endedAt: null })
+const timerName = () => document.querySelector('.timer-session-name')?.textContent
+const goTo = (path) => act(() => {
+  window.history.pushState({}, '', path)
+  window.dispatchEvent(new window.PopStateEvent('popstate'))
+})
+
+test('abrir uma sessão pelo link só consulta: nada é enviado e o aviso aponta para a que roda', async () => {
+  const calls = []
+  mockFocusApi([flowA(), flowB()], (path, options) => { calls.push([options.method, path]); return new Response(null, { status: 500 }) })
+  window.history.pushState({}, '', '/dashboard?sessao=12')
+  await openApp()
+  await settle()
+  assert.equal(timerName(), 'Foco B')
+  assert.equal(document.querySelector('.timer-session-details').textContent, 'Projeto: Redesign App · Tarefa: Revisar protótipo')
+  assert.ok(document.querySelector('button[aria-label="Retomar"]'))
+  assert.equal(document.querySelector('.timer-badge').textContent, 'Foco #1 · Pausado')
+  const notice = document.querySelector('.timer-notice')
+  assert.equal(notice.textContent, 'Em andamento: Foco A')
+  assert.equal(notice.querySelector('a').getAttribute('href'), '/dashboard?sessao=11')
+  await act(() => window.dispatchEvent(new window.PopStateEvent('popstate')))
+  assert.deepEqual(calls, [], 'abrir, atualizar ou voltar não envia Play, Pause nem Concluir')
+})
+
+test('pelo menu Painel aparece a sessão que roda, mesmo havendo uma criada depois', async () => {
+  const newer = { ...flowB(), id: 13, title: 'Mais nova', startedAt: ago(2), lastActivatedAt: ago(2), pausedAt: ago(1) }
+  mockFocusApi([flowA(), newer], undefined)
+  await openApp()
+  await settle()
+  assert.equal(timerName(), 'Foco A')
+  assert.ok(document.querySelector('button[aria-label="Pausar"]'))
+  assert.equal(document.querySelector('.timer-notice'), null)
+})
+
+test('sem sessão rodando o Painel mostra a última que recebeu Play, mesmo uma antiga retomada depois', async () => {
+  const resumedOld = { ...flowB(), id: 21, title: 'Antiga retomada', startedAt: ago(90), lastActivatedAt: ago(5), pausedAt: ago(3), totalPausedSeconds: 600 }
+  const newer = { ...flowB(), id: 22, title: 'Mais nova', startedAt: ago(20), lastActivatedAt: ago(20), pausedAt: ago(15) }
+  mockFocusApi([newer, resumedOld], undefined)
+  await openApp()
+  await settle()
+  assert.equal(timerName(), 'Antiga retomada')
+  assert.ok(document.querySelector('button[aria-label="Retomar"]'))
+})
+
+test('retomar a sessão exibida pausa a que rodava e as duas ficam corretas no Painel', async () => {
+  const calls = []
+  const b = flowB()
+  mockFocusApi([flowA(), b], (path, options) => {
+    calls.push([options.method, path, options.body])
+    return Response.json({ ...b, status: 'RUNNING', pausedAt: null, totalPausedSeconds: 600, lastActivatedAt: new Date().toISOString() })
+  })
+  window.history.pushState({}, '', '/dashboard?sessao=12')
+  await openApp()
+  await settle()
+  await act(() => document.querySelector('button[aria-label="Retomar"]').click())
+  await settle()
+  assert.deepEqual(calls, [['PATCH', '/focus-sessions/12', JSON.stringify({ status: 'RUNNING' })]])
+  assert.ok(document.querySelector('button[aria-label="Pausar"]'))
+  assert.equal(document.querySelector('.timer-notice'), null)
+  await goTo('/dashboard?sessao=11')
+  assert.equal(timerName(), 'Foco A')
+  assert.ok(document.querySelector('button[aria-label="Retomar"]'), 'A ficou pausada')
+  assert.equal(document.querySelector('.timer-notice').textContent, 'Em andamento: Foco B')
+})
+
+test('"Foco avulso" cria outro foco, não alterna o relógio: a sessão que rodava fica pausada', async () => {
+  const calls = []
+  mockFocusApi([flowA()], (path, options) => {
+    calls.push([options.method, path, options.body])
+    return Response.json({ ...focusSession, id: 30, title: null, taskId: null, projectId: null, plannedMinutes: 25, status: 'RUNNING', startedAt: new Date().toISOString(), lastActivatedAt: new Date().toISOString(), endedAt: null }, { status: 201 })
+  })
+  window.history.pushState({}, '', '/dashboard?sessao=11')
+  await openApp()
+  await settle()
+  assert.equal(buttonByText('Foco avulso').disabled, false)
+  await act(() => buttonByText('Foco avulso').click())
+  await settle()
+  assert.deepEqual(calls, [['POST', '/focus-sessions', JSON.stringify({ taskId: null, plannedMinutes: 25 })]])
+  assert.equal(window.location.search, '?sessao=30', 'o Painel passa a exibir a sessão criada')
+  assert.equal(timerName(), 'Sessão avulsa')
+  assert.ok(document.querySelector('button[aria-label="Pausar"]'))
+  assert.equal(document.querySelector('.timer-notice'), null)
+  await goTo('/dashboard?sessao=11')
+  assert.ok(document.querySelector('button[aria-label="Retomar"]'))
+  assert.equal(document.querySelector('.timer-notice').textContent, 'Em andamento: Sessão avulsa')
+})
+
+test('o Play central age só na sessão exibida e "Finalizar sessão" conclui o ID identificado', async () => {
+  const calls = []
+  const b = flowB()
+  mockFocusApi([flowA(), b], (path, options) => {
+    calls.push([options.method, path, options.body])
+    return Response.json({ ...b, status: 'COMPLETED', pausedAt: null, endedAt: new Date().toISOString() })
+  })
+  window.history.pushState({}, '', '/dashboard?sessao=12')
+  await openApp()
+  await settle()
+  await act(() => buttonByText('Finalizar sessão').click())
+  await settle()
+  assert.deepEqual(calls, [['PATCH', '/focus-sessions/12', JSON.stringify({ status: 'COMPLETED' })]])
+  assert.equal(document.querySelector('[role="dialog"] h2').textContent, 'Sessão concluída')
+})
+
+test('uma sessão concluída mostra o resumo e "Novo foco", sem Play nem Pause', async () => {
+  const done = { ...flowB(), id: 40, title: 'Concluída', status: 'COMPLETED', pausedAt: null, startedAt: ago(30), lastActivatedAt: ago(30), endedAt: ago(5) }
+  const calls = []
+  mockFocusApi([flowA(), done], (path, options) => { calls.push([options.method, path]); return new Response(null, { status: 500 }) })
+  window.history.pushState({}, '', '/dashboard?sessao=40')
+  await openApp()
+  await settle()
+  assert.equal(timerName(), 'Concluída')
+  assert.match(document.querySelector('.timer-summary').textContent, /Tempo focado: 25m 00s de 25 min planejados/)
+  assert.equal(document.querySelector('.timer-badge').textContent, 'Foco #1 · Concluído')
+  for (const label of ['Pausar', 'Retomar']) assert.equal(document.querySelector(`button[aria-label="${label}"]`), null)
+  assert.equal(document.querySelector('.timer-notice').textContent, 'Em andamento: Foco A')
+  await act(() => buttonByText('Novo foco').click())
+  assert.equal(document.querySelector('[role="dialog"] h2').textContent, 'Nova Sessão de Foco')
+  assert.deepEqual(calls, [])
+})
+
+for (const link of ['999', 'abc']) {
+  test(`um link para uma sessão indisponível (${link}) avisa e não deixa os controles agirem em outra`, async () => {
+    const calls = []
+    mockFocusApi([flowA()], (path, options) => { calls.push([options.method, path]); return new Response(null, { status: 500 }) })
+    window.history.pushState({}, '', `/dashboard?sessao=${link}`)
+    await openApp()
+    await settle()
+    assert.match(document.querySelector('[role="alert"]').textContent, /Esta sessão não foi encontrada/)
+    assert.equal(document.querySelector('[role="timer"]'), null)
+    assert.equal(document.querySelector('button[aria-label="Pausar"]'), null)
+    const back = document.querySelector('a[href="/dashboard"].dash-btn')
+    assert.equal(back.textContent, 'Voltar ao Painel')
+    await act(() => back.click())
+    await settle()
+    assert.equal(window.location.search, '')
+    assert.equal(timerName(), 'Foco A')
+    assert.deepEqual(calls, [])
+  })
+}
+
+test('consultar outra sessão não impede o Painel de concluir a que venceu', async () => {
+  const calls = []
+  const expired = { ...flowA(), startedAt: ago(30), lastActivatedAt: ago(30), plannedMinutes: 25 }
+  mockFocusApi([expired, flowB()], (path, options) => {
+    calls.push([options.method, path, options.body])
+    return Response.json({ ...expired, status: 'COMPLETED', endedAt: new Date().toISOString() })
+  })
+  window.history.pushState({}, '', '/dashboard?sessao=12')
+  await openApp()
+  await settle()
+  assert.deepEqual(calls, [], 'a sessão consultada não é concluída')
+  await act(() => new Promise((resolve) => setTimeout(resolve, 1200)))
+  await settle()
+  assert.deepEqual(calls, [['PATCH', '/focus-sessions/11', JSON.stringify({ status: 'COMPLETED' })]])
+  assert.equal(document.querySelector('[role="dialog"] h2').textContent, 'Sessão concluída')
+  assert.equal(timerName(), 'Foco B')
+})
+
+test('a rota de nova sessão abre o formulário mesmo com outra sessão em andamento', async () => {
+  mockFocusApi([flowA()], undefined)
+  window.history.pushState({}, '', '/focus-sessions/new')
+  await openApp()
+  await settle()
+  assert.equal(document.querySelector('[role="dialog"] h2').textContent, 'Nova Sessão de Foco')
+  assert.equal(document.querySelector('[role="alert"]'), null)
+})
+
+test('descartar a sessão consultada volta ao Painel sem tratá-la como indisponível', async () => {
+  const b = flowB()
+  mockFocusApi([flowA(), b], (path, options) => (options.method === 'DELETE' ? new Response(null, { status: 204 }) : new Response(null, { status: 500 })))
+  window.history.pushState({}, '', '/dashboard?sessao=12')
+  await openApp()
+  await settle()
+  await click(document.querySelector('[aria-label="Descartar sessão"]'))
+  await click(buttonByText('Descartar sessão'))
+  await settle()
+  assert.equal(window.location.search, '')
+  assert.equal(document.querySelector('[role="alert"]'), null)
+  assert.equal(timerName(), 'Foco A')
+})
+
+const listA = () => ({ ...flowA(), startedAt: ago(20) })
+const listSessions = () => [
+  listA(),
+  flowB(),
+  { ...focusSession, id: 13, title: null, taskId: 7, projectId: null, status: 'COMPLETED', startedAt: ago(100), lastActivatedAt: ago(100), endedAt: ago(90) },
+  { ...focusSession, id: 14, title: null, taskId: null, projectId: 3, status: 'COMPLETED', startedAt: ago(200), lastActivatedAt: ago(200), endedAt: ago(190) },
+  { ...focusSession, id: 15, title: null, taskId: null, projectId: null, status: 'COMPLETED', startedAt: ago(300), lastActivatedAt: ago(300), endedAt: ago(290) },
+]
+const rowOf = (id) => document.querySelector(`.session-link[href="/dashboard?sessao=${id}"]`).closest('tr')
+
+test('a lista mostra controles por linha e o título como link para o Painel', async () => {
+  mockFocusApi(listSessions(), undefined)
+  window.history.pushState({}, '', '/focus-sessions')
+  await openApp()
+  await settle()
+  const titles = [...document.querySelectorAll('.session-link')].map((link) => [link.textContent, link.getAttribute('href')])
+  assert.deepEqual(titles, [
+    ['Foco A', '/dashboard?sessao=11'], ['Foco B', '/dashboard?sessao=12'], ['Foco em Revisar protótipo', '/dashboard?sessao=13'],
+    ['Foco no projeto Redesign App', '/dashboard?sessao=14'], ['Sessão avulsa', '/dashboard?sessao=15'],
+  ])
+  const labels = (id) => [...rowOf(id).querySelectorAll('.row-control')].map((button) => button.getAttribute('aria-label'))
+  assert.deepEqual(labels(11), ['Pausar sessão: Foco A', 'Concluir sessão: Foco A'])
+  assert.deepEqual(labels(12), ['Retomar sessão: Foco B', 'Concluir sessão: Foco B'])
+  for (const id of [13, 14, 15]) {
+    assert.deepEqual(labels(id), [])
+    assert.equal(rowOf(id).querySelector('.row-done').textContent, 'Concluída')
+  }
+  await act(() => rowOf(11).querySelector('.row-menu-trigger').click())
+  assert.deepEqual([...rowOf(11).querySelectorAll('.row-menu-list button')].map((button) => button.textContent), ['Editar', 'Excluir'])
+  await act(() => rowOf(12).querySelector('.session-link').click())
+  assert.equal(window.location.pathname + window.location.search, '/dashboard?sessao=12')
+  assert.equal(timerName(), 'Foco B')
+})
+
+test('retomar na lista deixa A pausada e B rodando, sem sair da página, e ignora cliques repetidos', async () => {
+  const calls = []
+  const b = flowB()
+  mockFocusApi(listSessions(), (path, options) => {
+    calls.push([options.method, path, options.body])
+    return Response.json({ ...b, status: 'RUNNING', pausedAt: null, lastActivatedAt: new Date().toISOString() })
+  })
+  window.history.pushState({}, '', '/focus-sessions')
+  await openApp()
+  await settle()
+  const resume = rowOf(12).querySelector('button[aria-label="Retomar sessão: Foco B"]')
+  await act(() => { resume.click(); resume.click() })
+  await settle()
+  assert.deepEqual(calls, [['PATCH', '/focus-sessions/12', JSON.stringify({ status: 'RUNNING' })]])
+  assert.equal(window.location.pathname, '/focus-sessions')
+  assert.match(rowOf(11).textContent, /Pausada/)
+  assert.match(rowOf(12).textContent, /Em andamento/)
+  assert.ok(rowOf(11).querySelector('button[aria-label="Retomar sessão: Foco A"]'))
+  assert.ok(rowOf(12).querySelector('button[aria-label="Pausar sessão: Foco B"]'))
+})
+
+test('concluir uma sessão pausada na lista não mexe na que está rodando', async () => {
+  const calls = []
+  const b = flowB()
+  mockFocusApi(listSessions(), (path, options) => {
+    calls.push([options.method, path, options.body])
+    return Response.json({ ...b, status: 'COMPLETED', pausedAt: null, endedAt: new Date().toISOString() })
+  })
+  window.history.pushState({}, '', '/focus-sessions')
+  await openApp()
+  await settle()
+  await act(() => rowOf(12).querySelector('button[aria-label="Concluir sessão: Foco B"]').click())
+  await settle()
+  assert.deepEqual(calls, [['PATCH', '/focus-sessions/12', JSON.stringify({ status: 'COMPLETED' })]])
+  assert.match(rowOf(11).textContent, /Em andamento/)
+  assert.equal(rowOf(12).querySelector('.row-done').textContent, 'Concluída')
+})
+
+test('uma falha ao retomar mostra o erro e mantém as linhas como o servidor as devolve', async () => {
+  mockFocusApi(listSessions(), () => Response.json({ detail: 'Falha no servidor' }, { status: 503 }))
+  window.history.pushState({}, '', '/focus-sessions')
+  await openApp()
+  await settle()
+  await act(() => rowOf(12).querySelector('button[aria-label="Retomar sessão: Foco B"]').click())
+  await settle()
+  assert.ok(document.querySelector('[role="alert"]'))
+  assert.match(rowOf(11).textContent, /Em andamento/)
+  assert.match(rowOf(12).textContent, /Pausada/)
+  assert.equal(rowOf(12).querySelector('button[aria-label="Retomar sessão: Foco B"]').disabled, false)
+})
+
+test('os detalhes do projeto listam as sessões do projeto e abrem cada uma no Painel', async () => {
+  const sessions = [
+    { ...focusSession, id: 51, title: 'Estudo', taskId: 1, projectId: null, status: 'COMPLETED', startedAt: '2026-02-26T09:30:00Z', lastActivatedAt: '2026-02-26T09:30:00Z', endedAt: '2026-02-26T09:55:00Z' },
+    { ...focusSession, id: 52, title: null, taskId: null, projectId: 3, status: 'PAUSED', startedAt: '2026-02-27T09:30:00Z', lastActivatedAt: '2026-02-27T09:30:00Z', pausedAt: '2026-02-27T09:40:00Z', endedAt: null },
+    { ...focusSession, id: 53, title: 'Outro projeto', taskId: 99, projectId: null, status: 'COMPLETED', startedAt: '2026-02-26T09:30:00Z', endedAt: '2026-02-26T09:55:00Z' },
+    { ...focusSession, id: 54, title: 'Avulsa', taskId: null, projectId: null, status: 'COMPLETED', startedAt: '2026-02-26T09:30:00Z', endedAt: '2026-02-26T09:55:00Z' },
+  ]
+  mockCatalogApi(undefined, dashboardTasks, sessions)
+  window.history.pushState({}, '', '/projects/3')
+  await openApp()
+  await settle()
+  assert.equal(document.querySelector('#project-sessions').textContent, 'Sessões do projeto')
+  const rows = [...document.querySelectorAll('.project-session-row')]
+  assert.deepEqual(rows.map((row) => row.querySelector('strong').textContent), ['Foco no projeto Redesign App', 'Estudo'])
+  assert.match(rows[0].textContent, /Pausada · 10m 00s/)
+  const links = rows.map((row) => row.querySelector('a'))
+  assert.deepEqual(links.map((link) => link.getAttribute('href')), ['/dashboard?sessao=52', '/dashboard?sessao=51'])
+  assert.equal(links[0].textContent, 'Abrir no Painel')
+  assert.equal(links[0].getAttribute('aria-label'), 'Abrir no Painel: Foco no projeto Redesign App')
+  await act(() => links[1].click())
+  await settle()
+  assert.equal(window.location.pathname + window.location.search, '/dashboard?sessao=51')
+})
+
+test('um projeto sem sessões mostra o estado vazio', async () => {
+  mockCatalogApi(undefined, dashboardTasks, [])
+  window.history.pushState({}, '', '/projects/3')
+  await openApp()
+  await settle()
+  assert.equal(document.querySelector('.project-sessions-section .tasks-empty').textContent, 'Nenhuma sessão de foco neste projeto ainda.')
 })

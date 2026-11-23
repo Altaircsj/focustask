@@ -57,6 +57,11 @@ class FocusSession {
     @Column(name = "started_at", nullable = false, updatable = false)
     private Instant startedAt;
 
+    /** Instante do último Play: a criação ou a última retomada. Identifica a sessão ativada mais recentemente. */
+    @NotNull
+    @Column(name = "last_activated_at", nullable = false)
+    private Instant lastActivatedAt;
+
     @Column(name = "ended_at")
     private Instant endedAt;
 
@@ -73,6 +78,7 @@ class FocusSession {
     public FocusSession(Long userId, Clock clock) {
         this.userId = Objects.requireNonNull(userId, "User ID is required");
         this.startedAt = now(clock);
+        this.lastActivatedAt = this.startedAt;
     }
 
     public void pause(Clock clock) {
@@ -91,8 +97,15 @@ class FocusSession {
         if (status == FocusSessionStatus.RUNNING) {
             return;
         }
-        finishPause(now(clock));
+        Instant instant = now(clock);
+        finishPause(instant);
         status = FocusSessionStatus.RUNNING;
+        lastActivatedAt = instant;
+    }
+
+    /** Falha, sem alterar nada, quando a sessão não pode voltar a rodar (concluída). */
+    public void requireActivatable() {
+        requireNotCompleted("resumed");
     }
 
     public void complete(Clock clock) {
@@ -182,6 +195,10 @@ class FocusSession {
 
     public Instant getStartedAt() {
         return startedAt;
+    }
+
+    public Instant getLastActivatedAt() {
+        return lastActivatedAt;
     }
 
     public Instant getEndedAt() {

@@ -1,4 +1,5 @@
 import { activeSeconds } from '../focusSessions/format.js'
+import { defaultSession } from '../focusSessions/sessionInfo.js'
 
 export const DEFAULT_MINUTES = 25
 export const MINUTE_OPTIONS = [15, 25, 45, 60, 90, 120, 240]
@@ -46,16 +47,21 @@ export function summarize({ sessions, tasks }, now = Date.now()) {
   }
 }
 
-// Sessão em andamento ou pausada mais recente; é a que o cronômetro acompanha.
+// Sessão que o Painel mostra quando nenhuma foi escolhida: a que está rodando ou, sem nenhuma rodando,
+// a última que recebeu Play (pausada ou concluída).
 export function currentSession(sessions) {
-  return sessions
-    .filter((session) => session.status !== 'COMPLETED')
-    .sort((a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt))[0] ?? null
+  return defaultSession(sessions)
 }
 
-export function focusNumber(sessions, current, now = Date.now()) {
-  const today = sessions.filter((session) => startedToday(session, now)).length
-  return Math.max(1, today + (current ? 0 : 1))
+// Posição da sessão exibida entre as do mesmo dia, pela ordem de início; sem sessão, a próxima do dia.
+export function focusNumber(sessions, viewed, now = Date.now()) {
+  const day = new Date(viewed ? viewed.startedAt : now)
+  const sameDay = sessions.filter((session) => isSameDay(new Date(session.startedAt), day))
+  if (!viewed) return sameDay.length + 1
+  const started = Date.parse(viewed.startedAt)
+  const before = sameDay.filter((session) => Date.parse(session.startedAt) < started
+    || (Date.parse(session.startedAt) === started && session.id < viewed.id))
+  return before.length + 1
 }
 
 export function remainingSeconds(session, now = Date.now(), total = FOCUS_SECONDS) {

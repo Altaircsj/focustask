@@ -301,7 +301,8 @@ estado são processados juntos sob bloqueio pessimista e na mesma transação.
 Campos nas respostas HTTP: User (`id`, `name`, `email`),
 Project (`id`, `userId`, `name`, `description`, `color`, `tags`), Task (`id`, `projectId`, `title`,
 `description`, `status`, `priority`, `dueDate`, `estimatedMinutes`) e FocusSession (`id`, `userId`,
-`taskId`, `projectId`, `title`, `plannedMinutes`, `status`, `startedAt`, `endedAt`, `pausedAt`, `totalPausedSeconds`).
+`taskId`, `projectId`, `title`, `plannedMinutes`, `status`, `startedAt`, `endedAt`, `pausedAt`, `totalPausedSeconds`,
+`lastActivatedAt`).
 
 ### Mapeamento
 
@@ -340,6 +341,31 @@ limpa `pausedAt`. A primeira conclusão define `endedAt`; repetições não alte
 os tempos. Instantes usam UTC e precisão de microssegundos. Sessões concluídas
 podem ser vinculadas/desvinculadas sem reabrir seu histórico. Nenhum campo temporal
 pode ser editado por DTO de entrada.
+
+#### Uma única sessão em andamento por usuário
+
+Um usuário pode ter várias sessões abertas (`RUNNING` ou `PAUSED`), mas no máximo uma
+`RUNNING`. Criar uma sessão (inclusive por `/tasks/{taskId}/focus-sessions`) e pedir
+`RUNNING` por PUT ou PATCH são ativações: na mesma transação, a sessão que estava
+rodando é pausada e a escolhida é ativada, os dois com o mesmo instante do relógio do
+servidor. Pausar ou concluir nunca inicia outra sessão, e concluir uma sessão pausada
+não afeta a que está rodando. Repetir `RUNNING` em quem já roda não altera seus tempos.
+
+A coordenação é por usuário: todo método que escreve começa com
+`UserInternalApi.bloquearUsuario`, um `SELECT ... FOR UPDATE` na linha do usuário, que
+funciona em MySQL e PostgreSQL e serializa também duas criações simultâneas (bloquear só
+a linha da sessão de destino não bastaria). Esse bloqueio precisa ser a primeira leitura
+da transação, para que, no `REPEATABLE READ` do MySQL, as leituras seguintes vejam o que a
+transação anterior confirmou. O destino é validado (existência, dono e não estar
+concluído) antes de pausar qualquer sessão; qualquer falha desfaz a transação inteira e a
+sessão que rodava continua como estava. Os bloqueios seguem sempre a ordem usuário →
+sessões, por id, para evitar deadlock.
+
+`lastActivatedAt` guarda o instante do último Play (a criação ou a última retomada) e
+identifica a sessão ativada mais recentemente, mesmo depois de pausa, conclusão, recarga
+ou novo login; `startedAt` continua imutável. A migração V8 preenche os registros antigos
+com `startedAt` e, em contas que já tinham mais de uma sessão `RUNNING`, mantém rodando a
+de ativação mais recente (empate: maior id) e pausa as demais sem apagar histórico.
 
 ## Banco e execução
 
@@ -383,7 +409,8 @@ schema. As migrações definem as chaves estrangeiras entre entidades.
 - Task pode mudar de projeto apenas dentro do mesmo usuário.
 - FocusSession pode nascer sem Task e ser vinculada/desvinculada depois, inclusive
   após a conclusão. O service verifica o proprietário da Task.
-- Mudanças de estado da sessão usam bloqueio pessimista para serializar alterações.
+- Mudanças de estado da sessão usam bloqueio pessimista para serializar alterações; as escritas de sessão
+  são coordenadas por usuário (ver "Uma única sessão em andamento por usuário").
 - As implementações de APIs internas não chamam de volta os services coordenadores;
   isso evita dependências circulares.
 

@@ -65,8 +65,9 @@ public abstract class MySqlIntegrationTest {
     }
 
     protected long session(long userId, Long taskId) {
-        return insert("insert into focus_sessions(user_id,task_id,started_at) values (?,?,?)",
-                userId, taskId, java.sql.Timestamp.valueOf("2026-09-17 12:00:00"));
+        var startedAt = java.sql.Timestamp.valueOf("2026-09-17 12:00:00");
+        return insert("insert into focus_sessions(user_id,task_id,started_at,last_activated_at) values (?,?,?,?)",
+                userId, taskId, startedAt, startedAt);
     }
 
     private long insert(String sql, Object... args) {
