@@ -4,6 +4,18 @@ const pad = (value) => String(value).padStart(2, '0')
 export const PRIORITY_LABEL = { HIGH: 'Alta', MEDIUM: 'Média', LOW: 'Baixa' }
 export const STATUS_LABEL = { TODO: 'A fazer', IN_PROGRESS: 'Em andamento', DONE: 'Concluída' }
 
+export function formatMinutes(minutes, empty = '—') {
+  if (minutes == null) return empty
+  if (minutes < 60) return `${minutes} min`
+  const hours = Math.floor(minutes / 60)
+  const remainder = minutes % 60
+  return remainder ? `${hours}h${pad(remainder)}` : `${hours}h`
+}
+
+export function formatFocusedSeconds(seconds) {
+  return formatMinutes(Math.floor(seconds / 60))
+}
+
 function localDate(date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }

@@ -9,13 +9,17 @@ export default function TaskFormModal({ task, projects, defaultProjectId, busy, 
   const [priority, setPriority] = useState(task?.priority ?? 'MEDIUM')
   const [description, setDescription] = useState(task?.description ?? '')
   const [dueDate, setDueDate] = useState(task?.dueDate ?? '')
-  const valid = title.trim().length > 0 && title.length <= 255 && projectId !== ''
+  const [estimate, setEstimate] = useState(String(task?.estimatedMinutes ?? ''))
+  const minutes = estimate === '' ? null : Number(estimate)
+  const validEstimate = minutes === null || (/^\d+$/.test(estimate) && minutes > 0 && minutes <= 2147483647)
+  const valid = validEstimate && title.trim().length > 0 && title.length <= 255 && projectId !== ''
 
   function submit(event) {
     event.preventDefault()
     if (!valid || busy) return
     const details = { projectId: Number(projectId), title: title.trim(), description: description.trim(), status, priority }
     if (dueDate) details.dueDate = dueDate
+    if (minutes !== (task?.estimatedMinutes ?? null)) details.estimatedMinutes = minutes
     onSave(details)
   }
 
@@ -51,6 +55,13 @@ export default function TaskFormModal({ task, projects, defaultProjectId, busy, 
           <div className="form-field">
             <label htmlFor="task-description">Descrição (opcional)</label>
             <textarea id="task-description" className="chip-input" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
+          <div className="form-field">
+            <label htmlFor="task-estimate">Tempo estimado (minutos)</label>
+            <input id="task-estimate" className="chip-input" inputMode="numeric" placeholder="90" value={estimate}
+              aria-invalid={!validEstimate} aria-describedby={!validEstimate ? 'task-estimate-error' : undefined}
+              onChange={(e) => setEstimate(e.target.value)} />
+            {!validEstimate && <p id="task-estimate-error" role="alert">Informe um número inteiro de 1 a 2147483647 ou deixe em branco.</p>}
           </div>
           <div className="form-field">
             <label htmlFor="task-due">Prazo</label>

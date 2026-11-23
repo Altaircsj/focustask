@@ -12,5 +12,10 @@ public record TaskPatchDTO(
         String description,
         TaskStatusDTO status,
         TaskPriorityDTO priority,
-        LocalDate dueDate
-) {}
+        LocalDate dueDate,
+        EstimatedMinutesInput estimatedMinutes
+) {
+    public TaskPatchDTO(Long projectId, String title, String description, TaskStatusDTO status, TaskPriorityDTO priority, LocalDate dueDate) {
+        this(projectId, title, description, status, priority, dueDate, null);
+    }
+}

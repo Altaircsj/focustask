@@ -70,10 +70,11 @@ class PostgresDeploymentTests {
                 .andExpect(status().isOk());
         mvc.perform(auth(get(project))).andExpect(jsonPath("$.color").value("#A855F7"))
                 .andExpect(jsonPath("$.tags[0]").value("UI/UX")).andExpect(jsonPath("$.tags[1]").value("Férias"));
-        String task = create("/api/v1/projects/" + id(project) + "/tasks", "{\"title\":\"Demo task\"}");
+        String task = create("/api/v1/projects/" + id(project) + "/tasks", "{\"title\":\"Demo task\",\"estimatedMinutes\":360}");
         mvc.perform(auth(patch(task)).contentType(MediaType.APPLICATION_JSON).content("{\"priority\":\"HIGH\"}"))
                 .andExpect(status().isOk());
-        mvc.perform(auth(get(task))).andExpect(status().isOk()).andExpect(jsonPath("$.priority").value("HIGH"));
+        mvc.perform(auth(get(task))).andExpect(status().isOk()).andExpect(jsonPath("$.priority").value("HIGH"))
+                .andExpect(jsonPath("$.estimatedMinutes").value(360));
         mvc.perform(post("/api/v1/auth/register").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"Duplicate\",\"email\":\"POSTGRES@example.com\",\"password\":\"secret12\"}"))
                 .andExpect(status().isConflict())

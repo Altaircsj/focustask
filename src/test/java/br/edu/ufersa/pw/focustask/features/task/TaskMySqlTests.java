@@ -42,7 +42,7 @@ class TaskMySqlTests extends MySqlIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"id":%d,"projectId":%d,"title":"New task",
-                                 "description":"Study examples","dueDate":"2026-10-05"}
+                                 "description":"Study examples","dueDate":"2026-10-05","estimatedMinutes":360}
                                 """.formatted(existingTask, otherProject)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.projectId").value(urlProject))
@@ -51,6 +51,7 @@ class TaskMySqlTests extends MySqlIntegrationTest {
         Task created = repository.findAllByProjectId(urlProject).getFirst();
         assertNotEquals(existingTask, created.getId());
         assertEquals("New task", created.getTitle());
+        assertEquals(360, created.getEstimatedMinutes());
         assertEquals("Study examples", created.getDescription());
         assertEquals(java.time.LocalDate.of(2026, 10, 5), created.getDueDate());
         assertEquals(TaskStatus.TODO, created.getStatus());
@@ -60,6 +61,9 @@ class TaskMySqlTests extends MySqlIntegrationTest {
         Task original = repository.findById(existingTask).orElseThrow();
         assertEquals(otherProject, original.getProjectId());
         assertEquals("Task", original.getTitle());
+        assertNull(original.getEstimatedMinutes());
+        assertCheckConstraintViolation("ck_tasks_estimated_minutes", () ->
+                jdbc.update("update tasks set estimated_minutes = 0 where id = ?", existingTask));
         assertEquals(2, repository.count());
     }
 

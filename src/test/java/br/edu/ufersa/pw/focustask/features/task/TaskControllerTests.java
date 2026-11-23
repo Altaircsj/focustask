@@ -88,13 +88,59 @@ class TaskControllerTests extends br.edu.ufersa.pw.focustask.AuthenticatedMvcTes
         verifyNoInteractions(sessions);
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"PUT", "PATCH"})
+    void estimateCanBePreservedReplacedAndCleared(String method) throws Exception {
+        Task stored = new Task(42L, "Original");
+        stored.setEstimatedMinutes(90);
+        when(repository.findById(123L)).thenReturn(Optional.of(stored));
+        when(projects.pertenceAoUsuario(7L, 42L)).thenReturn(true);
+        String path = "/api/v1/tasks/123";
+        String fields = """
+                {"projectId":42,"title":"Editada","status":"TODO","priority":"HIGH"
+                """;
+        var verb = org.springframework.http.HttpMethod.valueOf(method);
+        mvc.perform(request(verb, path).contentType(MediaType.APPLICATION_JSON).content(fields + "}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.estimatedMinutes").value(90));
+        mvc.perform(request(verb, path).contentType(MediaType.APPLICATION_JSON)
+                        .content(fields + ",\"estimatedMinutes\":360}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.estimatedMinutes").value(360));
+        mvc.perform(request(verb, path).contentType(MediaType.APPLICATION_JSON)
+                        .content(fields + ",\"estimatedMinutes\":null}"))
+                .andExpect(status().isOk());
+        mvc.perform(get(path)).andExpect(status().isOk()).andExpect(jsonPath("$.estimatedMinutes").hasJsonPath())
+                .andExpect(jsonPath("$.estimatedMinutes").value(org.hamcrest.Matchers.nullValue()));
+        assertNull(stored.getEstimatedMinutes());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"0", "-1", "1.5", "2147483648"})
+    void invalidEstimateRejectsTheEntireRequest(String value) throws Exception {
+        String body = """
+                {"projectId":42,"title":"Editada","status":"TODO","priority":"HIGH","estimatedMinutes":%s}
+                """.formatted(value);
+        for (var operation : List.of(post("/api/v1/projects/42/tasks"), put("/api/v1/tasks/123"), patch("/api/v1/tasks/123"))) {
+            mvc.perform(operation.contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isBadRequest());
+        }
+        verifyNoInteractions(repository, projects, sessions);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"{\"title\":\"Study\"}", "{\"title\":\"Study\",\"estimatedMinutes\":null}"})
+    void createsWithoutEstimate(String body) throws Exception {
+        existingProject();
+        mvc.perform(post("/api/v1/projects/42/tasks").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.estimatedMinutes").hasJsonPath())
+                .andExpect(jsonPath("$.estimatedMinutes").value(org.hamcrest.Matchers.nullValue()));
+    }
+
     @Test
     void createsTaskFromUrlProjectAndReturnsCanonicalLocation() throws Exception {
         existingProject();
 
         mvc.perform(post("/api/v1/projects/42/tasks").contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"title":"Study", "description":"Read the examples", "dueDate":"2026-10-05"}
+                                {"title":"Study", "description":"Read the examples", "dueDate":"2026-10-05","estimatedMinutes":90}
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(header().string("Location", "http://localhost/api/v1/tasks/123"))
@@ -102,7 +148,8 @@ class TaskControllerTests extends br.edu.ufersa.pw.focustask.AuthenticatedMvcTes
                 .andExpect(jsonPath("$.projectId").value(42))
                 .andExpect(jsonPath("$.title").value("Study"))
                 .andExpect(jsonPath("$.description").value("Read the examples"))
-                .andExpect(jsonPath("$.dueDate").value("2026-10-05"));
+                .andExpect(jsonPath("$.dueDate").value("2026-10-05"))
+                .andExpect(jsonPath("$.estimatedMinutes").value(90));
         verify(repository).save(argThat(task -> task.getProjectId().equals(42L)));
         verifyNoInteractions(sessions);
     }

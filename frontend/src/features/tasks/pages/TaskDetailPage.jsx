@@ -4,11 +4,11 @@ import { Link, useNavigate, useParams } from 'react-router'
 import { Pencil, Play, Trash2 } from 'lucide-react'
 import { catalogService, focusSessionService } from '../../focusSessions/focusSessionService'
 import { activeSeconds, formatDuration, formatStartedAt } from '../../focusSessions/format'
-import { DEFAULT_MINUTES, formatClock, formatFocusedTime } from '../../dashboard/summary'
+import { DEFAULT_MINUTES, formatClock } from '../../dashboard/summary'
 import { loadMinutes } from '../../dashboard/dashboardService'
 import Modal from '../../dashboard/components/Modal'
 import TaskFormModal from '../components/TaskFormModal'
-import { formatDueDate, PRIORITY_LABEL, STATUS_LABEL } from '../format'
+import { formatDueDate, formatFocusedSeconds, formatMinutes, PRIORITY_LABEL, STATUS_LABEL } from '../format'
 import { taskService } from '../taskService'
 import '../../dashboard/dashboard.css'
 import '../../focusSessions/focus-sessions.css'
@@ -93,7 +93,8 @@ export default function TaskDetailPage() {
     { label: 'Projeto', value: <ProjectBadge project={project} /> },
     { label: 'Prioridade', value: PRIORITY_LABEL[task.priority] ? <span className="priority"><span className="priority-dot" data-priority={task.priority} aria-hidden="true" />{PRIORITY_LABEL[task.priority]}</span> : '—' },
     { label: 'Prazo de entrega', value: formatDueDate(task.dueDate) },
-    { label: 'Tempo focado', value: formatFocusedTime(focusedSeconds) },
+    { label: 'Tempo estimado', value: formatMinutes(task.estimatedMinutes, 'Sem estimativa') },
+    { label: 'Tempo focado', value: formatFocusedSeconds(focusedSeconds) },
   ]
 
   return (

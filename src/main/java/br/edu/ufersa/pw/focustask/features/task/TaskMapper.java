@@ -14,6 +14,7 @@ interface TaskMapper {
         Task task = new Task(projectId, dto.title());
         task.setDescription(dto.description());
         task.setDueDate(dto.dueDate());
+        if (dto.estimatedMinutes() != null) task.setEstimatedMinutes(dto.estimatedMinutes().value());
         return task;
     }
 
@@ -24,6 +25,7 @@ interface TaskMapper {
     @Mapping(target = "status", source = "status")
     @Mapping(target = "priority", source = "priority")
     @Mapping(target = "dueDate", source = "dueDate")
+    @Mapping(target = "estimatedMinutes", source = "estimatedMinutes", nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     void updateEntityFromDto(TaskUpdateDTO dto, @MappingTarget Task entity);
 
     @BeanMapping(ignoreByDefault = true, nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
@@ -33,7 +35,10 @@ interface TaskMapper {
     @Mapping(target = "status", source = "status")
     @Mapping(target = "priority", source = "priority")
     @Mapping(target = "dueDate", source = "dueDate")
+    @Mapping(target = "estimatedMinutes", source = "estimatedMinutes")
     void patchEntityFromDto(TaskPatchDTO dto, @MappingTarget Task entity);
+
+    default Integer toMinutes(EstimatedMinutesInput input) { return input.value(); }
 
     TaskStatusDTO toStatusDto(TaskStatus status);
     TaskStatus toStatus(TaskStatusDTO status);

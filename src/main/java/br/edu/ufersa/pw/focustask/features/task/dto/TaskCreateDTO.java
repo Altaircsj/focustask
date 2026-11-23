@@ -9,5 +9,10 @@ import java.time.LocalDate;
 public record TaskCreateDTO(
         @NotBlank @Size(max = 255) String title,
         String description,
-        LocalDate dueDate
-) {}
+        LocalDate dueDate,
+        EstimatedMinutesInput estimatedMinutes
+) {
+    public TaskCreateDTO(String title, String description, LocalDate dueDate) {
+        this(title, description, dueDate, null);
+    }
+}

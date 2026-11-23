@@ -21,7 +21,7 @@ class TaskMapperTests {
         assertNull(task.getDueDate());
         ReflectionTestUtils.setField(task, "id", 123L);
         assertEquals(new TaskResponseDTO(123L, 42L, "Study", null,
-                TaskStatusDTO.TODO, TaskPriorityDTO.MEDIUM, null), mapper.toResponse(task));
+                TaskStatusDTO.TODO, TaskPriorityDTO.MEDIUM, null, null), mapper.toResponse(task));
         assertEquals(List.of(mapper.toResponse(task)), mapper.toResponseList(List.of(task)));
     }
 
@@ -44,7 +44,7 @@ class TaskMapperTests {
         mapper.updateEntityFromDto(new TaskUpdateDTO(44L, "Updated", null,
                 TaskStatusDTO.DONE, TaskPriorityDTO.LOW, null), task);
         assertEquals(new TaskResponseDTO(123L, 44L, "Updated", null,
-                TaskStatusDTO.DONE, TaskPriorityDTO.LOW, null), mapper.toResponse(task));
+                TaskStatusDTO.DONE, TaskPriorityDTO.LOW, null, null), mapper.toResponse(task));
     }
 
     @Test

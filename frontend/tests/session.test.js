@@ -521,7 +521,7 @@ test('desmontar o provedor cancela uma recuperação em andamento', async () => 
   assert.equal(sessionStorage.getItem(tokenKey), 'valido')
 })
 
-const detailTask = { id: 7, projectId: 3, title: 'Revisar protótipo', description: 'Alta fidelidade', status: 'TODO', priority: 'HIGH', dueDate: null }
+const detailTask = { id: 7, projectId: 3, title: 'Revisar protótipo', description: 'Alta fidelidade', status: 'TODO', priority: 'HIGH', dueDate: null, estimatedMinutes: 90 }
 
 function mockTaskApi(sessions, onOther) {
   mockFocusApi(sessions, (path, options) => {
@@ -541,7 +541,7 @@ test('os detalhes da tarefa mostram os dados, o histórico e iniciam uma sessão
   await settle()
   assert.equal(document.querySelector('h1').textContent, 'Revisar protótipo')
   const facts = [...document.querySelectorAll('.task-facts .stat-card')].map((card) => card.textContent)
-  assert.deepEqual(facts, ['ProjetoRedesign App', 'PrioridadeAlta', 'Prazo de entregaSem prazo', 'Tempo focado25m'])
+  assert.deepEqual(facts, ['ProjetoRedesign App', 'PrioridadeAlta', 'Prazo de entregaSem prazo', 'Tempo estimado1h30', 'Tempo focado25 min'])
   assert.equal(document.querySelectorAll('.sessions-table tbody tr').length, 1)
   await act(() => [...document.querySelectorAll('button')].find((button) => button.textContent === 'Iniciar sessão para esta tarefa').click())
   await settle()
@@ -571,11 +571,14 @@ test('editar a tarefa envia PATCH e excluir remove e volta para a lista', async 
   const byText = (text) => [...document.querySelectorAll('button')].find((button) => button.textContent === text)
   await act(() => byText('Editar').click())
   assert.equal(document.querySelector('[role="dialog"] h2').textContent, 'Editar Tarefa')
+  assert.equal(document.querySelector('#task-estimate').value, '90')
+  await typeInto('#task-title', 'Novo título')
   await act(() => byText('Salvar Tarefa').click())
   await settle()
   assert.equal(calls[0][0], 'PATCH')
   assert.equal(calls[0][1], '/tasks/7')
   assert.equal(JSON.parse(calls[0][2]).priority, 'HIGH')
+  assert.equal(Object.hasOwn(JSON.parse(calls[0][2]), 'estimatedMinutes'), false)
   assert.equal(document.querySelector('h1').textContent, 'Novo título')
   await act(() => byText('Excluir').click())
   await act(() => byText('Excluir tarefa').click())
@@ -735,14 +738,14 @@ test('excluir a conta pede confirmação, envia DELETE /me e volta ao login', as
 const catalogProject = { id: 3, userId: 1, name: 'Redesign App', description: 'App de produtividade', color: '#E2E8F0', tags: ['Development'] }
 const catalogSessions = [{ ...focusSession, id: 1, taskId: 1, projectId: null, status: 'COMPLETED', startedAt: '2026-02-26T09:30:00Z', endedAt: '2026-02-26T09:55:00Z' }]
 
-function mockCatalogApi(onOther) {
+function mockCatalogApi(onOther, tasks = dashboardTasks, sessions = catalogSessions) {
   sessionStorage.setItem(tokenKey, 'valido')
   fetch.mock.mockImplementation((url, options = {}) => {
     const path = url.replace('http://api.test/api/v1', '')
     if (path === '/me') return Response.json(user)
     if (options.method === 'GET') {
-      if (path === '/focus-sessions') return Response.json(catalogSessions)
-      if (path === '/tasks') return Response.json(dashboardTasks)
+      if (path === '/focus-sessions') return Response.json(sessions)
+      if (path === '/tasks') return Response.json(tasks)
       if (path === '/projects') return Response.json([catalogProject])
       if (path === '/projects/3') return Response.json(catalogProject)
       if (path === '/projects/99') return Response.json({ message: 'Not found' }, { status: 404 })
@@ -878,10 +881,13 @@ test('os detalhes do projeto listam as tarefas e criam uma nova no projeto', asy
   await settle()
   assert.equal(document.querySelector('h1').textContent, 'Detalhes do Projeto - Redesign App')
   assert.equal(document.querySelectorAll('.projects-grid .project-card:not(.project-card-empty)').length, 3)
-  assert.match(document.querySelector('.project-card').textContent, /Pendentes|A fazer/)
+  assert.match(document.querySelector('.project-card').textContent, /Pendente/)
+  assert.match(document.querySelector('.project-summary').textContent, /Sem estimativas/)
   await act(() => buttonByText('Nova Tarefa').click())
   assert.equal(document.querySelector('#task-project').value, '3')
   await typeInto('#task-title', 'Nova')
+  assert.equal(document.querySelector('#task-estimate').value, '')
+  await typeInto('#task-estimate', '90')
   await act(() => document.querySelectorAll('#task-priority + .chip-row .chip')[2].click())
   await act(() => {
     const select = document.querySelector('#task-status')
@@ -891,11 +897,70 @@ test('os detalhes do projeto listam as tarefas e criam uma nova no projeto', asy
   await act(() => buttonByText('Salvar Tarefa').click())
   await settle()
   assert.deepEqual(calls, [
-    ['POST', '/projects/3/tasks', JSON.stringify({ title: 'Nova', description: '' })],
+    ['POST', '/projects/3/tasks', JSON.stringify({ title: 'Nova', description: '', estimatedMinutes: 90 })],
     ['PATCH', '/tasks/40', JSON.stringify({ status: 'IN_PROGRESS', priority: 'HIGH' })],
   ])
   assert.equal(document.querySelectorAll('.projects-grid .project-card:not(.project-card-empty)').length, 4)
 })
+
+for (const route of ['/tasks', '/projects/3']) {
+  test(`estimativa em ${route} sobrevive à falha do PATCH complementar e permite cancelar e limpar`, async () => {
+    let saved
+    let attempts = 0
+    mockCatalogApi((path, options) => {
+      const body = JSON.parse(options.body)
+      if (options.method === 'POST') {
+        saved = { ...body, id: 51, projectId: 3, status: 'TODO', priority: 'MEDIUM' }
+        return Response.json(saved, { status: 201 })
+      }
+      assert.equal(path, '/tasks/51')
+      attempts++
+      if (attempts <= 2) return new Response(null, { status: 500 })
+      saved = { ...saved, ...body }
+      return Response.json(saved)
+    })
+    window.history.pushState({}, '', route)
+    await openApp()
+    await settle()
+    const clickButton = (label) => act(() => buttonByText(label).click())
+    async function edit() {
+      await act(() => document.querySelector('[aria-label="Ações da tarefa Estimada"]').click())
+      await clickButton('Editar')
+    }
+    await clickButton('Nova Tarefa')
+    await typeInto('#task-title', 'Estimada')
+    for (const invalid of ['0', '-1', '1.5']) {
+      await typeInto('#task-estimate', invalid)
+      assert.equal(buttonByText('Salvar Tarefa').disabled, true)
+    }
+    await typeInto('#task-estimate', '90')
+    await clickButton('Salvar Tarefa')
+    await settle()
+    assert.equal(saved.estimatedMinutes, 90)
+    assert.match(document.body.textContent, /Tarefa criada, mas/)
+    await edit()
+    assert.equal(document.querySelector('#task-estimate').value, '90')
+    await typeInto('#task-estimate', '')
+    await clickButton('Cancelar')
+    await edit()
+    assert.equal(document.querySelector('#task-estimate').value, '90')
+    await typeInto('#task-estimate', '360')
+    await clickButton('Salvar Tarefa')
+    await settle()
+    assert.equal(document.querySelector('#task-estimate').value, '360')
+    assert.equal(saved.estimatedMinutes, 90)
+    await clickButton('Salvar Tarefa')
+    await settle()
+    assert.equal(saved.estimatedMinutes, 360)
+    await edit()
+    await typeInto('#task-estimate', '')
+    await clickButton('Salvar Tarefa')
+    await settle()
+    assert.equal(saved.estimatedMinutes, null)
+    await edit()
+    assert.equal(document.querySelector('#task-estimate').value, '')
+  })
+}
 
 test('um projeto inexistente mostra o aviso e o caminho de volta', async () => {
   mockCatalogApi()
@@ -905,6 +970,99 @@ test('um projeto inexistente mostra o aviso e o caminho de volta', async () => {
   assert.match(document.querySelector('[role="alert"]').textContent, /Projeto não encontrado/)
   assert.equal(document.querySelector('a[href="/projects"].dash-btn').textContent, 'Voltar aos projetos')
 })
+
+test('o detalhe do projeto recalcula conclusão e estimativas ao editar as tarefas', async () => {
+  const tasks = [
+    { ...dashboardTasks[0], estimatedMinutes: 90 },
+    { ...dashboardTasks[1], estimatedMinutes: 30 },
+    { ...dashboardTasks[2], estimatedMinutes: null },
+    { ...dashboardTasks[1], id: 4, title: 'Publicar', estimatedMinutes: null },
+    { ...dashboardTasks[1], id: 5, projectId: 8, estimatedMinutes: 360 },
+  ]
+  mockCatalogApi((path, options) => {
+    assert.equal(path, '/tasks/1')
+    assert.equal(options.method, 'PATCH')
+    Object.assign(tasks[0], JSON.parse(options.body))
+    return Response.json(tasks[0])
+  }, tasks, [...catalogSessions, { ...catalogSessions[0], id: 2, projectId: 3, taskId: null }])
+  window.history.pushState({}, '', '/projects/3')
+  await openApp()
+  await settle()
+  const card = document.querySelector('.project-task-grid .project-card')
+  function check(done, percent, estimate, status, label) {
+    assert.equal(document.querySelector('#project-completion').textContent, `${done} de 4 tarefas concluídas · ${percent}%`)
+    assert.equal(document.querySelector('[role="progressbar"]').getAttribute('aria-valuenow'), String(percent))
+    assert.equal(document.querySelectorAll('[role="progressbar"]').length, 1)
+    assert.deepEqual([...document.querySelectorAll('.project-time-totals dd')].map(el => el.textContent), [estimate, '50 min'])
+    assert.equal(card.querySelector('.task-state-label').textContent, label)
+    const track = card.querySelector('.task-state-track')
+    assert.equal(track.dataset.status, status)
+    assert.equal(track.getAttribute('aria-hidden'), 'true')
+    assert.equal(track.hasAttribute('aria-valuenow'), false)
+  }
+  async function edit(changes) {
+    await act(() => card.querySelector('.row-menu-trigger').click())
+    await act(() => buttonByText('Editar').click())
+    if (changes.status) await act(() => {
+      const select = document.querySelector('#task-status')
+      select.value = changes.status
+      select.dispatchEvent(new window.Event('change', { bubbles: true }))
+    })
+    if ('estimate' in changes) await typeInto('#task-estimate', changes.estimate)
+    await act(() => buttonByText('Salvar Tarefa').click())
+    await settle()
+  }
+  check(2, 50, '2h estimadas em 2 de 4 tarefas', 'TODO', 'Pendente')
+  assert.match(card.textContent, /Estimativa: 1h30/)
+  assert.match(card.textContent, /Focado: 25 min/)
+  await edit({ status: 'IN_PROGRESS' })
+  check(2, 50, '2h estimadas em 2 de 4 tarefas', 'IN_PROGRESS', 'Em andamento')
+  await edit({ status: 'DONE' })
+  check(3, 75, '2h estimadas em 2 de 4 tarefas', 'DONE', '✓ Concluída')
+  await edit({ estimate: '120' })
+  check(3, 75, '2h30 estimadas em 2 de 4 tarefas', 'DONE', '✓ Concluída')
+  await edit({ estimate: '' })
+  check(3, 75, '30 min estimados em 1 de 4 tarefas', 'DONE', '✓ Concluída')
+  assert.doesNotMatch(card.textContent, /Estimativa:/)
+})
+
+test('um projeto vazio mostra o progresso zero e a ausência de estimativas', async () => {
+  mockCatalogApi(undefined, [], [])
+  window.history.pushState({}, '', '/projects/3')
+  await openApp()
+  await settle()
+  assert.equal(document.querySelector('#project-completion').textContent, '0 de 0 tarefas concluídas · 0%')
+  assert.equal(document.querySelector('.project-time-totals dd').textContent, 'Sem estimativas')
+})
+
+test('a tabela compara estimativa e foco sem concluir tarefas que ultrapassaram a previsão', async () => {
+  const tasks = dashboardTasks.map((task, i) => ({ ...task, estimatedMinutes: [10, 360, null][i] }))
+  mockCatalogApi(undefined, tasks)
+  window.history.pushState({}, '', '/tasks')
+  await openApp()
+  await settle()
+  const table = document.querySelector('.tasks-table')
+  const columns = [...table.tHead.rows[0].cells].map(cell => cell.textContent)
+  const estimated = columns.indexOf('Estimado')
+  assert.ok(estimated >= 0)
+  assert.equal(columns[estimated + 1], 'Focado')
+  const rows = [...table.tBodies[0].rows]
+  assert.deepEqual(rows.map(row => [row.cells[estimated].textContent, row.cells[estimated + 1].textContent]),
+    [['10 min', '25 min'], ['6h', '0 min'], ['—', '0 min']])
+  assert.equal(rows[0].querySelector('.task-check').checked, false)
+  assert.equal(rows[0].querySelector('.status-badge').dataset.status, 'TODO')
+})
+
+for (const [estimate, expected] of [[90, '1h30'], [null, 'Sem estimativa']]) {
+  test(`o detalhe exibe ${expected} e zero focado quando a tarefa não tem sessões`, async () => {
+    mockFocusApi([], () => Response.json({ ...detailTask, estimatedMinutes: estimate }))
+    window.history.pushState({}, '', '/tasks/7')
+    await openApp()
+    await settle()
+    const values = [...document.querySelectorAll('.task-facts dd')].map(el => el.textContent)
+    assert.deepEqual(values.slice(-2), [expected, '0 min'])
+  })
+}
 
 test('a lista de tarefas filtra por status, conclui pelo checkbox e exclui', async () => {
   const calls = []

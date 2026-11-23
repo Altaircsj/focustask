@@ -4,18 +4,25 @@ import { Clock, Pencil, Plus, SquareCheck, Trash2 } from 'lucide-react'
 import ActionMenu from '../../../components/ActionMenu'
 import ConfirmModal from '../../catalog/components/ConfirmModal'
 import { useAction, useCatalog } from '../../catalog/useCatalog'
-import { formatFocusedTime } from '../../dashboard/summary'
 import TaskFormModal from '../../tasks/components/TaskFormModal'
-import { formatDueDate, STATUS_LABEL } from '../../tasks/format'
+import { formatDueDate, formatFocusedSeconds, formatMinutes } from '../../tasks/format'
 import { createTask, taskService } from '../../tasks/taskService'
 import ProjectFormModal from '../components/ProjectFormModal'
 import { projectService } from '../projectService'
-import { focusedByTask } from '../summary'
+import { focusedByTask, projectStats } from '../summary'
 import '../../dashboard/dashboard.css'
 import '../projects.css'
 
 const MENU = [{ id: 'edit', label: 'Editar' }, { id: 'delete', label: 'Excluir' }]
-const FILL = { TODO: 0, IN_PROGRESS: 50, DONE: 100 }
+const TASK_STATE = { TODO: 'Pendente', IN_PROGRESS: 'Em andamento', DONE: '✓ Concluída' }
+
+function estimateCaption({ estimatedMinutes, estimatedCount, total }) {
+  if (!estimatedCount) return 'Sem estimativas'
+  const unit = estimatedMinutes < 60
+    ? (estimatedMinutes === 1 ? 'estimado' : 'estimados')
+    : (estimatedMinutes < 120 ? 'estimada' : 'estimadas')
+  return `${formatMinutes(estimatedMinutes)} ${unit} em ${estimatedCount} de ${total} ${total === 1 ? 'tarefa' : 'tarefas'}`
+}
 
 export default function ProjectDetailPage() {
   const { projectId } = useParams()
@@ -73,6 +80,7 @@ export default function ProjectDetailPage() {
     )
   }
 
+  const stats = projectStats(project, tasks, data.sessions)
   return (
     <main className="dashboard-page projects-page">
       <header className="page-header">
@@ -93,7 +101,18 @@ export default function ProjectDetailPage() {
 
       {notice && <p role="status">{notice}</p>}
 
-      <ul className="projects-grid">
+      <section className="project-summary" aria-labelledby="project-completion">
+        <h2 id="project-completion">{stats.done} de {stats.total} {stats.total === 1 ? 'tarefa concluída' : 'tarefas concluídas'} · {stats.percent}%</h2>
+        <div className="progress" role="progressbar" aria-label="Progresso do projeto" aria-valuemin={0} aria-valuemax={100} aria-valuenow={stats.percent}>
+          <span style={{ width: `${stats.percent}%` }} />
+        </div>
+        <dl className="project-time-totals">
+          <div><dt>Estimativa das tarefas</dt><dd>{estimateCaption(stats)}</dd></div>
+          <div><dt>Tempo focado</dt><dd>{formatFocusedSeconds(stats.focusedSeconds)}</dd></div>
+        </dl>
+      </section>
+
+      <ul className="projects-grid project-task-grid">
         {tasks.map((task) => (
           <li key={task.id} className="project-card">
             <div className="project-card-header">
@@ -101,12 +120,13 @@ export default function ProjectDetailPage() {
               <ActionMenu label={`Ações da tarefa ${task.title}`} actions={MENU} onSelect={(action) => open({ type: action === 'edit' ? 'task' : 'delete-task', task })} />
             </div>
             <div className="progress-area">
-              <div className="progress-label"><span>{STATUS_LABEL[task.status]}</span><span>{FILL[task.status] ?? 0}%</span></div>
-              <div className="progress" role="progressbar" aria-label={`Andamento de ${task.title}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={FILL[task.status] ?? 0}><span style={{ width: `${FILL[task.status] ?? 0}%` }} /></div>
+              <span className="task-state-label">{TASK_STATE[task.status]}</span>
+              <div className="task-state-track" data-status={task.status} aria-hidden="true" />
             </div>
             <div className="meta-stats">
               <span><SquareCheck size={14} aria-hidden="true" />Prazo: {formatDueDate(task.dueDate)}</span>
-              <span><Clock size={14} aria-hidden="true" />{formatFocusedTime(focused.get(task.id) ?? 0)} focados</span>
+              {task.estimatedMinutes != null && <span>Estimativa: {formatMinutes(task.estimatedMinutes)}</span>}
+              <span><Clock size={14} aria-hidden="true" />Focado: {formatFocusedSeconds(focused.get(task.id) ?? 0)}</span>
             </div>
           </li>
         ))}

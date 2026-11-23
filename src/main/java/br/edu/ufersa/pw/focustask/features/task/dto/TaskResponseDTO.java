@@ -9,5 +9,6 @@ public record TaskResponseDTO(
         String description,
         TaskStatusDTO status,
         TaskPriorityDTO priority,
-        LocalDate dueDate
+        LocalDate dueDate,
+        Integer estimatedMinutes
 ) {}

@@ -3,18 +3,47 @@
 .task-page-actions { display: flex; flex-wrap: wrap; gap: 12px; }
 .task-facts .stat-card { min-height: 0; }
 .task-facts .stat-card dd { font-size: 14px; font-weight: 600; text-transform: none; }
+.stats-grid.task-facts { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+@media (max-width: 1280px) {
+  .stats-grid.task-facts { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .task-facts .stat-card { grid-column: span 2; }
+  .task-facts .stat-card:nth-last-child(-n+2) { grid-column: span 3; }
+}
+@media (max-width: 600px) {
+  .task-facts .stat-card { grid-column: span 3; }
+  .task-facts .stat-card:first-child { grid-column: 1 / -1; }
+}
 .task-timer .timer-ring { width: 212px; height: 212px; padding: 0; justify-content: center; border-radius: 50%; }
 .task-timer .timer-clock { font-size: 48px; }
 .task-page .sessions-table { width: 100%; }
 
-.tasks-table { table-layout: fixed; }
+.tasks-page .filter-chips { flex-wrap: wrap; }
+.tasks-table-scroll { position: relative; overflow-x: auto; }
+.tasks-table-scroll:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.tasks-table-scroll:has(tr:nth-last-child(-n+2) .row-menu-list) { padding-bottom: 84px; }
+.tasks-table { table-layout: fixed; min-width: 980px; }
+.tasks-table th { box-sizing: border-box; }
 .tasks-table .col-name { width: auto; }
-.tasks-table .col-project { width: 150px; }
+.tasks-table .col-project { display: table-cell; width: 150px; }
 .tasks-table .col-priority { width: 110px; }
 .tasks-table .col-status { width: 140px; }
 .tasks-table .col-due { width: 110px; }
-.tasks-table .col-focused { width: 90px; }
+.tasks-table .col-estimated, .tasks-table .col-focused { width: 90px; }
 .tasks-table .col-actions { width: 48px; }
+@media (max-width: 768px) {
+  /* Keep the pinned name and the two time columns readable at the end of the scroll. */
+  .tasks-table { min-width: min(800px, calc(100% + 439px)); }
+  .tasks-table .col-project { width: 124px; }
+  .tasks-table .col-priority { width: 96px; }
+  .tasks-table .col-status { width: 124px; }
+  .tasks-table .col-due { width: 95px; }
+  .tasks-table .col-estimated { width: 76px; }
+  .tasks-table .col-focused { width: 66px; }
+  .tasks-table .col-actions { width: 36px; }
+  .tasks-table :is(th, td):last-child { padding-inline: 6px; }
+  .tasks-table :is(th, td):first-child { position: sticky; left: 0; z-index: 1; border-right: 1px solid var(--border); }
+  .tasks-table .task-name-cell { background: var(--bg); white-space: normal; overflow-wrap: anywhere; }
+}
 .task-name-cell { display: table-cell; }
 .task-name-cell .task-check { display: inline-block; vertical-align: middle; margin-right: 12px; }
 .dashboard-page .task-name-cell a { color: var(--text-h); font-weight: 500; vertical-align: middle; }

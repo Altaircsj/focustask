@@ -7,7 +7,7 @@ export const taskService = {
   remove: (id, signal) => api.request(`/tasks/${id}`, { method: 'DELETE', signal }),
 }
 
-// A criação só aceita título, descrição e prazo: status e prioridade são aplicados em seguida.
+// A estimativa segue no POST. O PATCH complementar aplica somente status e prioridade.
 export async function createTask(details) {
   const { projectId, status, priority, ...base } = details
   const created = await taskService.create(projectId, base)

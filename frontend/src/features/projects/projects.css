@@ -34,3 +34,21 @@
 .project-card-empty span { font-size: 12px; }
 .project-card-empty:hover { border-color: var(--brand); }
 .project-card-empty button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+.project-summary { padding: 20px 24px; border: 1px solid var(--border); border-radius: 12px; }
+.project-summary .progress { margin-top: 12px; }
+.project-time-totals { display: flex; flex-wrap: wrap; gap: 16px 36px; margin: 18px 0 0; }
+.project-time-totals dt { color: var(--text); font-size: 12px; }
+.project-time-totals dd { margin: 4px 0 0; color: var(--text-h); font-weight: 600; }
+.project-task-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+.project-task-grid .meta-stats { justify-content: flex-start; flex-wrap: wrap; }
+.project-task-grid .task-state-label { color: var(--text-h); font-size: 13px; font-weight: 600; }
+.project-task-grid .task-state-track { height: 6px; border-radius: 3px; background: var(--border); }
+.project-task-grid .task-state-track[data-status="DONE"] { background: #158158; }
+.project-task-grid .task-state-track[data-status="IN_PROGRESS"] {
+  background: repeating-linear-gradient(135deg, transparent 0 25%, color-mix(in srgb, var(--brand) 36%, transparent) 25% 50%) 0 0 / 16px 16px var(--brand-bg);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .project-task-grid .task-state-track[data-status="IN_PROGRESS"] { animation: task-state-stripes 2s linear infinite; }
+}
+@keyframes task-state-stripes { to { background-position: 16px 0; } }

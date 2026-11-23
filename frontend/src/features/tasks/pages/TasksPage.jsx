@@ -5,10 +5,9 @@ import { Plus } from 'lucide-react'
 import ActionMenu from '../../../components/ActionMenu'
 import ConfirmModal from '../../catalog/components/ConfirmModal'
 import { useAction, useCatalog } from '../../catalog/useCatalog'
-import { formatFocusedTime } from '../../dashboard/summary'
 import { focusedByTask } from '../../projects/summary'
 import TaskFormModal from '../components/TaskFormModal'
-import { formatDueDate, PRIORITY_LABEL, STATUS_LABEL } from '../format'
+import { formatDueDate, formatFocusedSeconds, formatMinutes, PRIORITY_LABEL, STATUS_LABEL } from '../format'
 import { createTask, taskService } from '../taskService'
 import '../../dashboard/dashboard.css'
 import '../../focusSessions/focus-sessions.css'
@@ -89,37 +88,41 @@ export default function TasksPage() {
           {rows.length === 0 ? (
             <p className="tasks-empty">{data.tasks.length === 0 ? 'Você ainda não tem tarefas. Crie a primeira em "Nova Tarefa".' : 'Nenhuma tarefa neste filtro.'}</p>
           ) : (
-            <table className="sessions-table tasks-table">
-              <thead>
-                <tr>
-                  <th scope="col" className="col-name">Nome da Tarefa</th>
-                  <th scope="col" className="col-project">Projeto</th>
-                  <th scope="col" className="col-priority">Prioridade</th>
-                  <th scope="col" className="col-status">Status</th>
-                  <th scope="col" className="col-due">Prazo</th>
-                  <th scope="col" className="col-focused">Focado</th>
-                  <th scope="col" className="col-actions"><span className="visually-hidden">Ações</span></th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((task) => (
-                  <tr key={task.id}>
-                    <td className="task-name-cell">
-                      <input type="checkbox" className="task-check" checked={task.status === 'DONE'} disabled={busy} aria-label={`${task.status === 'DONE' ? 'Reabrir' : 'Concluir'} tarefa: ${task.title}`} onChange={() => toggle(task)} />
-                      <Link to={`/tasks/${task.id}`}>{task.title}</Link>
-                    </td>
-                    <td><ProjectBadge project={projects.get(task.projectId)} /></td>
-                    <td>{PRIORITY_LABEL[task.priority] ? <span className="priority"><span className="priority-dot" data-priority={task.priority} aria-hidden="true" />{PRIORITY_LABEL[task.priority]}</span> : '—'}</td>
-                    <td><span className="status-badge" data-status={task.status}>{STATUS_LABEL[task.status]}</span></td>
-                    <td>{formatDueDate(task.dueDate)}</td>
-                    <td>{formatFocusedTime(focused.get(task.id) ?? 0)}</td>
-                    <td className="col-actions">
-                      <ActionMenu label={`Ações da tarefa ${task.title}`} actions={MENU} onSelect={(action) => open({ type: action === 'edit' ? 'task' : 'delete', task })} />
-                    </td>
+            <div className="tasks-table-scroll" role="region" aria-label="Tabela de tarefas" tabIndex={0}>
+              <table className="sessions-table tasks-table">
+                <thead>
+                  <tr>
+                    <th scope="col" className="col-name">Nome da Tarefa</th>
+                    <th scope="col" className="col-project">Projeto</th>
+                    <th scope="col" className="col-priority">Prioridade</th>
+                    <th scope="col" className="col-status">Status</th>
+                    <th scope="col" className="col-due">Prazo</th>
+                    <th scope="col" className="col-estimated">Estimado</th>
+                    <th scope="col" className="col-focused">Focado</th>
+                    <th scope="col" className="col-actions"><span className="visually-hidden">Ações</span></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {rows.map((task) => (
+                    <tr key={task.id}>
+                      <td className="task-name-cell">
+                        <input type="checkbox" className="task-check" checked={task.status === 'DONE'} disabled={busy} aria-label={`${task.status === 'DONE' ? 'Reabrir' : 'Concluir'} tarefa: ${task.title}`} onChange={() => toggle(task)} />
+                        <Link to={`/tasks/${task.id}`}>{task.title}</Link>
+                      </td>
+                      <td><ProjectBadge project={projects.get(task.projectId)} /></td>
+                      <td>{PRIORITY_LABEL[task.priority] ? <span className="priority"><span className="priority-dot" data-priority={task.priority} aria-hidden="true" />{PRIORITY_LABEL[task.priority]}</span> : '—'}</td>
+                      <td><span className="status-badge" data-status={task.status}>{STATUS_LABEL[task.status]}</span></td>
+                      <td>{formatDueDate(task.dueDate)}</td>
+                      <td>{formatMinutes(task.estimatedMinutes)}</td>
+                      <td>{formatFocusedSeconds(focused.get(task.id) ?? 0)}</td>
+                      <td className="col-actions">
+                        <ActionMenu label={`Ações da tarefa ${task.title}`} actions={MENU} onSelect={(action) => open({ type: action === 'edit' ? 'task' : 'delete', task })} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </>
       )}

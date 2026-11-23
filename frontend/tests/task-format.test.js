@@ -1,8 +1,19 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { formatDueDate } from '../src/features/tasks/format.js'
+import { formatDueDate, formatMinutes, formatFocusedSeconds } from '../src/features/tasks/format.js'
 
 const now = new Date(2026, 1, 26, 15, 0).getTime()
+
+test('formata estimativas em minutos e mantém a ausência distinta de zero', () => {
+  assert.equal(formatMinutes(25), '25 min')
+  assert.equal(formatMinutes(65), '1h05')
+  assert.equal(formatMinutes(90), '1h30')
+  assert.equal(formatMinutes(360), '6h')
+  assert.equal(formatMinutes(null), '—')
+  assert.equal(formatMinutes(undefined, 'Sem estimativa'), 'Sem estimativa')
+  assert.equal(formatFocusedSeconds(0), '0 min')
+  assert.equal(formatFocusedSeconds(90 * 60 + 59), '1h30')
+})
 
 test('o prazo vira Hoje, Amanhã ou Ontem perto da data atual', () => {
   assert.equal(formatDueDate('2026-02-26', now), 'Hoje')

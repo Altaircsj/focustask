@@ -12,5 +12,10 @@ public record TaskUpdateDTO(
         String description,
         @NotNull TaskStatusDTO status,
         @NotNull TaskPriorityDTO priority,
-        LocalDate dueDate
-) {}
+        LocalDate dueDate,
+        EstimatedMinutesInput estimatedMinutes
+) {
+    public TaskUpdateDTO(Long projectId, String title, String description, TaskStatusDTO status, TaskPriorityDTO priority, LocalDate dueDate) {
+        this(projectId, title, description, status, priority, dueDate, null);
+    }
+}

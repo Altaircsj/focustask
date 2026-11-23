@@ -11,13 +11,16 @@ import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 import java.util.Objects;
+import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+@DynamicUpdate
 @Entity
 @Table(name = "tasks", indexes = @Index(name = "idx_tasks_project", columnList = "project_id"))
 class Task {
@@ -52,6 +55,10 @@ class Task {
 
     @Column(name = "due_date")
     private LocalDate dueDate;
+
+    @Positive
+    @Column(name = "estimated_minutes")
+    private Integer estimatedMinutes;
 
     protected Task() {
     }
@@ -115,5 +122,13 @@ class Task {
 
     public void setDueDate(LocalDate dueDate) {
         this.dueDate = dueDate;
+    }
+
+    public Integer getEstimatedMinutes() {
+        return estimatedMinutes;
+    }
+
+    public void setEstimatedMinutes(Integer estimatedMinutes) {
+        this.estimatedMinutes = estimatedMinutes;
     }
 }

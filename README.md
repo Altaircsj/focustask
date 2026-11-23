@@ -84,7 +84,7 @@ Content-Type: application/json
 
 O `projectId` da URL determina a associação. `TaskApplicationService` verifica
 pela API interna se o projeto pertence ao usuário autenticado antes de criar a entidade.
-Somente `title`, `description` e `dueDate` participam da criação; campos extras
+A criação aceita `title`, `description`, `dueDate` e `estimatedMinutes`. Campos extras
 como `id`, `projectId`, `status` e `priority` não alteram identidade, vínculo ou
 defaults. Status e prioridade começam em `TODO` e `MEDIUM`.
 
@@ -271,10 +271,13 @@ e pode estar no passado. Descrições continuam opcionais, sem limite adicional.
 |---|---|---|---|
 | User | Registro: `name`, `email`, `password` obrigatórios | Ambos obrigatórios | Ambos opcionais |
 | Project | `name` obrigatório. `description`, `color` e `tags` opcionais | `name` obrigatório. `description` ausente ou nula limpa a descrição | Todos opcionais |
-| Task | `title` obrigatório; `description`, `dueDate` opcionais | `projectId`, `title`, `status`, `priority` obrigatórios; descrição/prazo opcionais | Todos opcionais |
+| Task | `title` obrigatório; `description`, `dueDate` e `estimatedMinutes` opcionais | `projectId`, `title`, `status`, `priority` obrigatórios; descrição, prazo e estimativa opcionais | Todos opcionais |
 | FocusSession | `taskId`, `projectId`, `title` e `plannedMinutes` opcionais | `status` obrigatório; `taskId` opcional | `taskId`, `status`, `title`, `plannedMinutes` e `association` opcionais |
 
-PATCH interpreta ausência e `null` como **não alterar**; `{}` é válido. Valores
+Em tarefas, `estimatedMinutes` aceita minutos inteiros positivos, como `90` ou `360`.
+No POST, omitir ou enviar `null` cria sem estimativa. No PUT e no PATCH, omitir preserva
+o valor, enviar um inteiro substitui a estimativa e `null` explícito a limpa.
+Para os demais campos, PATCH interpreta ausência e `null` como **não alterar**. `{}` é válido. Valores
 presentes ainda devem ser válidos, inclusive nomes/títulos não vazios nem só espaços.
 Em projetos, tanto PUT quanto PATCH preservam `color` e `tags` quando omitidos ou nulos.
 Uma lista de tags substitui a anterior na ordem enviada. Use `{"tags":[]}` para limpar.
@@ -297,7 +300,7 @@ estado são processados juntos sob bloqueio pessimista e na mesma transação.
 
 Campos nas respostas HTTP: User (`id`, `name`, `email`),
 Project (`id`, `userId`, `name`, `description`, `color`, `tags`), Task (`id`, `projectId`, `title`,
-`description`, `status`, `priority`, `dueDate`) e FocusSession (`id`, `userId`,
+`description`, `status`, `priority`, `dueDate`, `estimatedMinutes`) e FocusSession (`id`, `userId`,
 `taskId`, `projectId`, `title`, `plannedMinutes`, `status`, `startedAt`, `endedAt`, `pausedAt`, `totalPausedSeconds`).
 
 ### Mapeamento
