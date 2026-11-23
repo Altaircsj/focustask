@@ -73,7 +73,7 @@ test('só salva o token depois de /me, mostra o painel e sai pela rota protegida
   assert.equal(sessionStorage.getItem(tokenKey), 'novo')
   assert.equal(window.location.pathname, '/dashboard')
   assert.match(document.body.textContent, /teste@example.com/)
-  await act(() => document.querySelector('button').click())
+  await act(() => [...document.querySelectorAll('button')].find((button) => button.textContent === 'Sair').click())
   assert.equal(sessionStorage.getItem(tokenKey), null)
   assert.equal(window.location.pathname, '/login')
 })
@@ -1403,3 +1403,45 @@ test('um projeto sem sessões mostra o estado vazio', async () => {
   await settle()
   assert.equal(document.querySelector('.project-sessions-section .tasks-empty').textContent, 'Nenhuma sessão de foco neste projeto ainda.')
 })
+
+// --- Tema claro/escuro ---
+
+const themeButton = (label) => document.querySelector(`.theme-toggle button[aria-label="${label}"]`)
+
+test('o menu lateral tem o seletor de tema: escolher escuro aplica, marca o botão e é lembrado', async () => {
+  mockFocusApi([], undefined)
+  await openApp()
+  await settle()
+  const group = document.querySelector('.sidebar .theme-toggle')
+  assert.equal(group.getAttribute('aria-label'), 'Tema')
+  assert.deepEqual([...group.querySelectorAll('button')].map((button) => button.getAttribute('aria-label')),
+    ['Tema automático (segue o sistema)', 'Tema claro', 'Tema escuro'])
+  assert.equal(themeButton('Tema automático (segue o sistema)').getAttribute('aria-pressed'), 'true')
+  await act(() => themeButton('Tema escuro').click())
+  assert.equal(document.documentElement.dataset.theme, 'dark')
+  assert.equal(window.localStorage.getItem('focustask.theme'), 'dark')
+  assert.equal(themeButton('Tema escuro').getAttribute('aria-pressed'), 'true')
+  assert.equal(themeButton('Tema automático (segue o sistema)').getAttribute('aria-pressed'), 'false')
+  await act(() => themeButton('Tema claro').click())
+  assert.equal(document.documentElement.dataset.theme, 'light')
+  assert.equal(themeButton('Tema claro').getAttribute('aria-pressed'), 'true')
+})
+
+test('uma escolha salva já aparece marcada ao abrir a página', async () => {
+  window.localStorage.setItem('focustask.theme', 'dark')
+  mockFocusApi([], undefined)
+  await openApp()
+  await settle()
+  assert.equal(themeButton('Tema escuro').getAttribute('aria-pressed'), 'true')
+})
+
+for (const route of ['/login', '/register', '/rota-que-nao-existe']) {
+  test(`${route} também tem o seletor de tema`, async () => {
+    window.history.pushState({}, '', route)
+    await openApp()
+    await settle()
+    assert.ok(document.querySelector('.public-theme .theme-toggle'))
+    await act(() => themeButton('Tema escuro').click())
+    assert.equal(document.documentElement.dataset.theme, 'dark')
+  })
+}

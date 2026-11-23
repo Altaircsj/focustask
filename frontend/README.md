@@ -136,6 +136,9 @@ este trabalho. Não houve deploy ou teste do serviço remoto.
 | `src/features/focusSessions/focus-sessions.css` | Estilos das duas páginas de sessões |
 | `src/layouts/AppLayout.jsx`, `src/layouts/app-layout.css` | Estrutura das rotas autenticadas: menu lateral à esquerda e a página (`Outlet`) ao lado |
 | `src/layouts/components/SideBar.jsx`, `src/layouts/components/sidebar.css` | Menu lateral do Figma: rotas com destaque da atual (`NavLink`), nome e e-mail do `useAuth` |
+| `src/layouts/PublicLayout.jsx` | Envolve login, cadastro e 404 com o seletor de tema no canto superior direito |
+| `src/features/theme/theme.js` | Tema claro/escuro: lê e salva a escolha (`focustask.theme`), aplica `data-theme` em `<html>` e acompanha o sistema no modo automático |
+| `src/features/theme/useTheme.js`, `ThemeToggle.jsx`, `theme.css` | Hook e botões Automático/Claro/Escuro (no menu lateral e nas páginas públicas) |
 
 O token fica no `sessionStorage` da aba, na chave `focustask.token`. O usuário
 fica em memória. Ao iniciar, `useEffect` verifica `/me` antes de liberar as rotas.
@@ -148,6 +151,10 @@ Falhas de conexão e respostas diferentes de 401 durante a recuperação preserv
 o token e exibem Tentar novamente. Os efeitos cancelam requisições e invalidam
 respostas antigas no logout/desmonte, inclusive no StrictMode. Um 401 atrasado
 com token de sessão anterior não remove um token novo.
+
+### Tema claro e escuro
+
+O seletor tem três opções: **Automático** (segue o sistema, inclusive ao vivo), **Claro** e **Escuro**. A escolha fica no `localStorage` (`focustask.theme`) e vale em todas as abas. O tema é aplicado como `data-theme` em `<html>`; um script em `index.html` faz isso antes do React carregar, evitando o flash de tema errado. As cores ficam em variáveis CSS (`src/index.css`; `--brand*` em `app-layout.css`): use `var(--...)` em vez de cores fixas e confira a tela nos dois temas.
 
 ### Alterar a senha pelo Perfil
 

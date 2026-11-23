@@ -1,0 +1,16 @@
+.theme-toggle { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); }
+.theme-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+.theme-option:hover { background: color-mix(in srgb, var(--text) 10%, var(--bg)); color: var(--text-h); }
+.theme-option[aria-pressed="true"] { background: color-mix(in srgb, var(--text) 16%, var(--bg)); color: var(--text-h); }
+.theme-option:focus-visible { outline: 2px solid var(--text-h); outline-offset: 1px; }

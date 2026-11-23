@@ -5,7 +5,9 @@
   text-align: left;
 }
 
-.app-shell { --brand: #4d49fc; --brand-bg: rgba(77, 73, 252, 0.08); display: flex; flex: 1; }
+.app-shell { --brand: #4d49fc; --brand-bg: rgba(77, 73, 252, 0.08); --brand-ink: var(--brand); display: flex; flex: 1; }
+/* No escuro, --brand (fundos com texto branco) clareia um pouco e --brand-ink (texto e realces sobre o fundo) bem mais. */
+:root[data-theme='dark'] .app-shell { --brand: #5b57ff; --brand-bg: rgba(154, 151, 255, 0.16); --brand-ink: #a5a2ff; }
 .app-content { flex: 1; min-width: 0; }
 
 @media (max-width: 768px) {

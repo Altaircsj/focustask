@@ -14,7 +14,7 @@
 .dashboard-page h1 { margin: 0; font-size: 28px; font-weight: 700; letter-spacing: normal; }
 .dashboard-page h2 { margin: 0; font-size: 18px; font-weight: 700; }
 .dashboard-page p { margin: 0; }
-.dashboard-page a { color: var(--brand); font-weight: 600; text-decoration: none; }
+.dashboard-page a { color: var(--brand-ink); font-weight: 600; text-decoration: none; }
 .dashboard-page [role="alert"] { color: var(--text-h); border-left: 3px solid var(--brand); padding-left: 10px; }
 
 .dashboard-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
@@ -49,7 +49,7 @@
 
 .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 0; }
 .stat-card { display: flex; align-items: center; gap: 16px; padding: 20px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); }
-.stat-icon { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 40px; height: 40px; border-radius: 8px; background: var(--surface); color: var(--brand); }
+.stat-icon { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 40px; height: 40px; border-radius: 8px; background: var(--surface); color: var(--brand-ink); }
 .stat-card dt { margin: 0 0 4px; color: var(--text); font-size: 12px; font-weight: 500; text-transform: uppercase; }
 .stat-card dd { margin: 0; color: var(--text-h); font-size: 20px; font-weight: 700; }
 
@@ -77,8 +77,8 @@
   border-radius: 170px;
   background: color-mix(in srgb, var(--brand) 3%, transparent);
 }
-.timer-clock { color: var(--brand); font-size: 64px; font-weight: 800; font-variant-numeric: tabular-nums; }
-.timer-badge { padding: 4px 12px; border-radius: 12px; background: var(--brand-bg); color: var(--brand); font-size: 12px; font-weight: 700; text-transform: uppercase; }
+.timer-clock { color: var(--brand-ink); font-size: 64px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.timer-badge { padding: 4px 12px; border-radius: 12px; background: var(--brand-bg); color: var(--brand-ink); font-size: 12px; font-weight: 700; text-transform: uppercase; }
 
 .timer-controls { display: flex; align-items: center; gap: 16px; }
 .timer-round,
@@ -128,12 +128,12 @@
 .modal-card select:disabled { background: color-mix(in srgb, var(--text) 8%, var(--bg)); cursor: not-allowed; }
 .chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip { padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text-h); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
-.chip[aria-pressed="true"] { border-color: var(--brand); background: var(--brand-bg); color: var(--brand); }
+.chip[aria-pressed="true"] { border-color: var(--brand); background: var(--brand-bg); color: var(--brand-ink); }
 .modal-card select:focus-visible,
 .chip-input:focus-visible,
 .chip:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 .dashboard-page .modal-note { margin: 0 0 20px; padding: 12px; border-radius: 8px; background: color-mix(in srgb, var(--text) 8%, var(--bg)); color: var(--text); font-size: 12px; }
-.dashboard-page .modal-error { margin: 0; color: #ef4444; font-size: 12px; }
+.dashboard-page .modal-error { margin: 0; color: var(--danger); font-size: 12px; }
 .modal-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; }
 .modal-summary { display: flex; flex-direction: column; gap: 16px; margin: 20px 0; }
 .focus-fields { border: 0; padding: 0; margin: 0; min-width: 0; }
@@ -154,9 +154,9 @@
 .page-actions { display: flex; flex-wrap: wrap; gap: 12px; }
 .breadcrumb { display: flex; gap: 8px; margin-bottom: 4px; color: var(--text); font-size: 13px; }
 .dashboard-page .breadcrumb a { color: var(--text); font-weight: 400; }
-.breadcrumb [aria-current] { color: var(--brand); }
+.breadcrumb [aria-current] { color: var(--brand-ink); }
 .dash-btn-danger,
-.dashboard-page a.dash-btn-danger { border-color: #ef4444; color: #ef4444; }
+.dashboard-page a.dash-btn-danger { border-color: var(--danger); color: var(--danger); }
 .dash-btn-solid-danger { white-space: nowrap; border-color: #ef4444; background: #ef4444; color: #fff; }
 .dash-btn-solid-danger:focus-visible { outline: 2px solid #ef4444; outline-offset: 2px; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -166,5 +166,8 @@
 .timer-session-name { margin: 0; color: var(--text-h); font-size: 18px; font-weight: 600; }
 .timer-session-details { margin: 0; color: var(--text); font-size: 14px; }
 .timer-notice { margin: 0; padding: 6px 12px; border-radius: 8px; background: var(--brand-bg); color: var(--text-h); font-size: 13px; }
-.timer-notice a { color: var(--brand); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.timer-notice a { color: var(--brand-ink); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 .timer-summary { margin: 0; color: var(--text); font-size: 14px; }
+
+/* No escuro a sombra do modal some; uma borda o separa do fundo escurecido. */
+:root[data-theme='dark'] .modal-card { border: 1px solid var(--border); }

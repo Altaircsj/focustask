@@ -1,5 +1,6 @@
 import { Link, Navigate, Route, Routes } from 'react-router'
 import AppLayout from '../layouts/AppLayout'
+import PublicLayout from '../layouts/PublicLayout'
 import LoginPage from '../features/auth/pages/LoginPage'
 import RegisterPage from '../features/auth/pages/RegisterPage'
 import { useAuth } from '../features/auth/useAuth'
@@ -17,8 +18,10 @@ export default function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<Navigate to={user ? '/dashboard' : '/login'} replace />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
+      <Route element={<PublicLayout />}>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+      </Route>
       <Route element={user ? <AppLayout /> : <Navigate to="/login" replace />}>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/projects" element={<ProjectsPage />} />
@@ -29,7 +32,9 @@ export default function AppRoutes() {
         <Route path="/focus-sessions/new" element={<NewFocusSessionPage />} />
         <Route path="/profile" element={<ProfilePage />} />
       </Route>
-      <Route path="*" element={<main className="auth-card"><h1>Página não encontrada</h1><Link to="/">Ir ao início</Link></main>} />
+      <Route element={<PublicLayout />}>
+        <Route path="*" element={<main className="auth-card"><h1>Página não encontrada</h1><Link to="/">Ir ao início</Link></main>} />
+      </Route>
     </Routes>
   )
 }
