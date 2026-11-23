@@ -1,4 +1,5 @@
 import { activeSeconds } from '../focusSessions/format.js'
+import { byLastActivation } from '../focusSessions/sessionInfo.js'
 
 export function projectStats(project, tasks, sessions, now = Date.now()) {
   const own = tasks.filter((task) => task.projectId === project.id)
@@ -20,4 +21,14 @@ export function focusedByTask(sessions, now = Date.now()) {
     totals.set(session.taskId, (totals.get(session.taskId) ?? 0) + activeSeconds(session, now))
   }
   return totals
+}
+
+// Sessões ligadas diretamente ao projeto ou a qualquer tarefa dele, sem duplicatas, da ativada por último à mais antiga.
+export function projectSessions(project, tasks, sessions) {
+  const ids = new Set(tasks.filter((task) => task.projectId === project.id).map((task) => task.id))
+  const unique = new Map()
+  for (const session of sessions) {
+    if (session.projectId === project.id || (session.taskId != null && ids.has(session.taskId))) unique.set(session.id, session)
+  }
+  return [...unique.values()].sort(byLastActivation)
 }

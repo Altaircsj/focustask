@@ -40,14 +40,19 @@ test('o resumo conta tempo e sessões só de hoje e tarefas no total', () => {
   })
 })
 
-test('o cronômetro acompanha a sessão não concluída mais recente', () => {
+test('o Painel acompanha a sessão que roda e, sem nenhuma rodando, a última que recebeu Play', () => {
   const sessions = [
     session({ id: 1 }),
-    session({ id: 2, status: 'PAUSED', startedAt: at(8), endedAt: null }),
-    session({ id: 3, status: 'RUNNING', startedAt: at(14), endedAt: null }),
+    session({ id: 2, status: 'PAUSED', startedAt: at(8), endedAt: null, pausedAt: at(8, 30) }),
+    session({ id: 3, status: 'RUNNING', startedAt: at(7), endedAt: null }),
   ]
   assert.equal(currentSession(sessions).id, 3)
-  assert.equal(currentSession([session({ id: 1 })]), null)
+  assert.equal(currentSession([session({ id: 1 })]).id, 1)
+  assert.equal(currentSession([]), null)
+  const paused = sessions.slice(0, 2)
+  assert.equal(currentSession(paused).id, 1, 'concluída em seguida é a última ativada')
+  const resumedLater = [paused[0], { ...paused[1], lastActivatedAt: at(14) }]
+  assert.equal(currentSession(resumedLater).id, 2, 'a retomada mais recente vence a criação mais recente')
 })
 
 test('o tempo restante parte de 25 minutos e nunca fica negativo', () => {
@@ -57,12 +62,14 @@ test('o tempo restante parte de 25 minutos e nunca fica negativo', () => {
   assert.equal(remainingSeconds(running, now, 45 * 60), 35 * 60)
 })
 
-test('o número do foco conta as sessões de hoje, incluindo a atual', () => {
+test('o número do foco é a posição da sessão exibida entre as do mesmo dia', () => {
   const sessions = [session({ id: 1 }), session({ id: 2, status: 'RUNNING', startedAt: at(14, 50), endedAt: null })]
   assert.equal(focusNumber(sessions, sessions[1], now), 2)
+  assert.equal(focusNumber(sessions, sessions[0], now), 1, 'consultar uma sessão antiga mostra a posição dela')
   assert.equal(focusNumber(sessions.slice(0, 1), null, now), 2)
   assert.equal(focusNumber([], null, now), 1)
-  assert.equal(focusNumber([session({ id: 9, status: 'RUNNING', startedAt: at(23, 0, 25), endedAt: null })], { id: 9 }, now), 1)
+  const yesterday = session({ id: 9, status: 'RUNNING', startedAt: at(23, 0, 25), endedAt: null })
+  assert.equal(focusNumber([yesterday], yesterday, now), 1)
 })
 
 test('as tarefas do dia são pendentes, sem prazo futuro e ordenadas por prazo e prioridade', () => {

@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import ProjectBadge from '../../projects/components/ProjectBadge'
-import { Link, useLocation, useNavigate } from 'react-router'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { AlarmClock, Award, CircleCheck, ListTodo, Pause, Play, RefreshCw, SquareCheck, Zap } from 'lucide-react'
 import { useAuth } from '../../auth/useAuth'
 import { catalogService, focusSessionService } from '../../focusSessions/focusSessionService'
+import { activeSeconds, formatDuration } from '../../focusSessions/format'
+import { applyActivation, describeSession, runningSession, sessionLink } from '../../focusSessions/sessionInfo'
 import { dashboardService, loadMinutes, saveMinutes } from '../dashboardService'
 import CompletedSessionModal from '../components/CompletedSessionModal'
 import NewFocusModal from '../components/NewFocusModal'
@@ -30,7 +32,9 @@ export default function DashboardPage() {
   const autoFinishAttempt = useRef(null)
   const location = useLocation()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const enterNewFocus = useRef(location.state?.newFocus)
+  const requested = searchParams.get('sessao')
 
   useEffect(() => {
     const controller = new AbortController()
@@ -43,8 +47,7 @@ export default function DashboardPage() {
         setData({ status: 'ready', sessions, tasks, projects })
         if (enterNewFocus.current) {
           enterNewFocus.current = false
-          if (currentSession(sessions)) setActionError('Você já tem uma sessão em andamento.')
-          else setModal({ type: 'new' })
+          setModal({ type: 'new' })
         }
       },
     ).catch((error) => { if (!signal.aborted) setData({ status: 'error', message: error.message }) })
@@ -52,10 +55,18 @@ export default function DashboardPage() {
   }, [attempt])
 
   const ready = data.status === 'ready'
-  const current = ready ? currentSession(data.sessions) : null
-  const planned = current?.plannedMinutes ?? minutes
+  // O link ?sessao=ID só consulta: nada é enviado ao abrir, atualizar ou voltar. Sem ele, vale a sessão que roda
+  // ou a última que recebeu Play. O relógio que conta (running) é sempre o da sessão rodando, seja qual for a exibida.
+  const requestedId = requested !== null && /^\d+$/.test(requested) ? Number(requested) : null
+  const counting = ready ? runningSession(data.sessions) : null
+  const current = !ready ? null : requested === null ? currentSession(data.sessions) : data.sessions.find((item) => item.id === requestedId) ?? null
+  const unavailable = ready && requested !== null && !current
+  const plannedOf = (session) => session.plannedMinutes ?? minutes
+  const planned = current ? plannedOf(current) : minutes
   const remaining = current ? remainingSeconds(current, now, planned * 60) : minutes * 60
   const running = current?.status === 'RUNNING'
+  const completed = current?.status === 'COMPLETED'
+  const countingPlanned = counting ? plannedOf(counting) : null
 
   useEffect(() => {
     if (ready && location.state?.newFocus) navigate('/dashboard', { replace: true, state: null })
@@ -85,12 +96,10 @@ export default function DashboardPage() {
     }
   }
 
+  // Reflete a resposta da API; um Play ou uma criação também pausa, no estado local, a sessão que rodava.
   function saveSession(session) {
     setNow(Date.now())
-    setData((state) => {
-      const known = state.sessions.some((item) => item.id === session.id)
-      return { ...state, sessions: known ? state.sessions.map((item) => (item.id === session.id ? session : item)) : [...state.sessions, session] }
-    })
+    setData((state) => ({ ...state, sessions: applyActivation(state.sessions, session) }))
   }
 
   function finishSession(session) {
@@ -99,23 +108,26 @@ export default function DashboardPage() {
   }
 
   // Uma falha de conclusão permite nova tentativa pelo botão Finalizar sessão.
+  // Acompanha o vencimento da sessão que roda, mesmo que o Painel esteja exibindo outra.
   useEffect(() => {
-    if (!running) return undefined
+    if (!counting) return undefined
     const timer = setInterval(() => {
       const tick = Date.now()
       setNow(tick)
-      if (remainingSeconds(current, tick, planned * 60) > 0) {
+      if (remainingSeconds(counting, tick, countingPlanned * 60) > 0) {
         autoFinishAttempt.current = null
-      } else if (!working.current && autoFinishAttempt.current !== current.id) {
-        autoFinishAttempt.current = current.id
-        perform(() => focusSessionService.setStatus(current.id, 'COMPLETED'), finishSession)
+      } else if (!working.current && autoFinishAttempt.current !== counting.id) {
+        autoFinishAttempt.current = counting.id
+        perform(() => focusSessionService.setStatus(counting.id, 'COMPLETED'), finishSession)
       }
     }, 1000)
     return () => clearInterval(timer)
-  }, [running, current, planned])
+  }, [counting, countingPlanned])
 
+  // Play/Pause do relógio exibido: retoma ou pausa a sessão que está na tela, sem criar outra.
   function toggleTimer() {
     if (!current) return startFocus({ taskId: null, plannedMinutes: minutes })
+    if (completed) return undefined
     return perform(() => focusSessionService.setStatus(current.id, running ? 'PAUSED' : 'RUNNING'), saveSession)
   }
 
@@ -124,11 +136,13 @@ export default function DashboardPage() {
     saveMinutes(value)
   }
 
+  // Cria outro foco (a sessão em andamento é pausada pelo servidor) e passa a exibi-lo.
   function startFocus(details) {
     perform(() => focusSessionService.create(details), (session) => {
       rememberMinutes(details.plannedMinutes)
       saveSession(session)
       setModal(null)
+      if (requested !== null) setSearchParams({ sessao: String(session.id) })
     })
   }
 
@@ -149,6 +163,7 @@ export default function DashboardPage() {
       rememberMinutes(planned)
       setData((state) => ({ ...state, sessions: state.sessions.filter((item) => item.id !== id) }))
       setModal(null)
+      if (requested !== null && requestedId === id) navigate('/dashboard', { replace: true })
     })
   }
 
@@ -193,6 +208,11 @@ export default function DashboardPage() {
     { label: 'Tarefas Pendentes', value: summary.pendingTasks, icon: ListTodo },
   ]
   const timerLabel = !current ? 'Iniciar foco' : running ? 'Pausar' : 'Retomar'
+  const tasksById = ready ? new Map(data.tasks.map((task) => [task.id, task])) : null
+  const info = current ? describeSession(current, tasksById, projects) : null
+  const otherRunning = counting && current && counting.id !== current.id ? describeSession(counting, tasksById, projects) : null
+  const badge = [`Foco #${focusNumber(data.sessions ?? [], current, now)}`, current?.status === 'PAUSED' && 'Pausado', completed && 'Concluído']
+    .filter(Boolean).join(' · ')
 
   return (
     <main className="dashboard-page">
@@ -226,35 +246,64 @@ export default function DashboardPage() {
             ))}
           </dl>
 
-          <section className="timer-card" aria-label="Cronômetro de foco" aria-busy={busy}>
-            <div className="timer-ring">
-              <p className="timer-clock" role="timer">{formatClock(remaining)}</p>
-              <span className="timer-badge">Foco #{focusNumber(data.sessions, current, now)}{current?.status === 'PAUSED' ? ' · Pausado' : ''}</span>
-            </div>
-            <div className="timer-controls">
-                <button type="button" className="timer-round" aria-label="Descartar sessão" disabled={!current || busy} onClick={() => openModal({ type: 'discard', session: current })}>
-                <RefreshCw size={18} aria-hidden="true" />
-              </button>
-              <button type="button" className="timer-play" aria-label={timerLabel} disabled={busy} onClick={toggleTimer}>
-                {running ? <Pause size={24} aria-hidden="true" /> : <Play size={24} aria-hidden="true" />}
-              </button>
-              <TimerMenu current={current} onEdit={(session) => openModal({ type: 'edit', session })} />
-            </div>
-            <div className="timer-actions">
-              <button type="button" className="dash-btn" disabled={Boolean(current) || busy} onClick={toggleTimer}>
-                <Zap size={16} aria-hidden="true" />Foco avulso
-              </button>
-              {current && (
-                <button type="button" className="dash-btn" disabled={busy} onClick={finishNow}>
-                  <CircleCheck size={16} aria-hidden="true" />Finalizar sessão
-                </button>
+          {unavailable ? (
+            <section className="timer-card" aria-label="Sessão indisponível">
+              <p role="alert">Esta sessão não foi encontrada. Ela pode ter sido excluída ou não pertence à sua conta.</p>
+              <Link to="/dashboard" className="dash-btn dash-btn-primary">Voltar ao Painel</Link>
+            </section>
+          ) : (
+            <section className="timer-card" aria-label="Cronômetro de foco" aria-busy={busy}>
+              {info && (
+                <div className="timer-session">
+                  <p className="timer-session-name">{info.name}</p>
+                  {info.details.length > 0 && <p className="timer-session-details">{info.details.join(' · ')}</p>}
+                </div>
               )}
-              <button type="button" className="dash-btn dash-btn-primary" disabled={Boolean(current) || busy} onClick={() => openModal({ type: 'new' })}>
-                <SquareCheck size={16} aria-hidden="true" />Foco com tarefa
-              </button>
-            </div>
-            {!modal && actionError && <p role="alert">{actionError}</p>}
-          </section>
+              {otherRunning && (
+                <p className="timer-notice" role="status">
+                  Em andamento: <Link to={sessionLink(counting.id)}>{otherRunning.name}</Link>
+                </p>
+              )}
+              <div className="timer-ring">
+                <p className="timer-clock" role="timer">{completed ? formatClock(activeSeconds(current, now)) : formatClock(remaining)}</p>
+                <span className="timer-badge">{badge}</span>
+              </div>
+              {completed && (
+                <p className="timer-summary">Tempo focado: {formatDuration(activeSeconds(current, now))} de {planned} min planejados</p>
+              )}
+              <div className="timer-controls">
+                <button type="button" className="timer-round" aria-label="Descartar sessão" disabled={!current || busy} onClick={() => openModal({ type: 'discard', session: current })}>
+                  <RefreshCw size={18} aria-hidden="true" />
+                </button>
+                {completed ? (
+                  <button type="button" className="dash-btn dash-btn-primary" disabled={busy} onClick={() => openModal({ type: 'new' })}>
+                    <Zap size={16} aria-hidden="true" />Novo foco
+                  </button>
+                ) : (
+                  <button type="button" className="timer-play" aria-label={timerLabel} disabled={busy} onClick={toggleTimer}>
+                    {running ? <Pause size={24} aria-hidden="true" /> : <Play size={24} aria-hidden="true" />}
+                  </button>
+                )}
+                <TimerMenu current={current} onEdit={(session) => openModal(session.status === 'COMPLETED'
+                  ? { type: 'done', session, heading: 'Editar Sessão de Foco' }
+                  : { type: 'edit', session })} />
+              </div>
+              <div className="timer-actions">
+                <button type="button" className="dash-btn" disabled={busy} onClick={() => startFocus({ taskId: null, plannedMinutes: minutes })}>
+                  <Zap size={16} aria-hidden="true" />Foco avulso
+                </button>
+                {current && !completed && (
+                  <button type="button" className="dash-btn" disabled={busy} onClick={finishNow}>
+                    <CircleCheck size={16} aria-hidden="true" />Finalizar sessão
+                  </button>
+                )}
+                <button type="button" className="dash-btn dash-btn-primary" disabled={busy} onClick={() => openModal({ type: 'new' })}>
+                  <SquareCheck size={16} aria-hidden="true" />Foco com tarefa
+                </button>
+              </div>
+              {!modal && actionError && <p role="alert">{actionError}</p>}
+            </section>
+          )}
 
           <section className="tasks-section" aria-labelledby="daily-tasks">
             <div className="tasks-heading">
@@ -289,7 +338,8 @@ export default function DashboardPage() {
       {ready && modal?.type === 'edit' && <EditFocusModal session={modal.session} projects={data.projects} tasks={data.tasks}
         minutes={minutes} busy={busy} error={actionError} onSave={updateSession} onClose={closeModal} />}
       {ready && modal?.type === 'done' && <CompletedSessionModal key={modal.session.id} session={modal.session} projects={data.projects}
-        tasks={data.tasks} busy={busy} error={actionError} onSave={updateSession} onClose={closeModal} />}
+        tasks={data.tasks} busy={busy} error={actionError} onSave={updateSession} onClose={closeModal}
+        {...(modal.heading ? { heading: modal.heading, subtitle: 'Atualize o título e a associação da sessão.' } : {})} />}
       {modal?.type === 'discard' && (
         <Modal title="Descartar esta sessão de foco?" subtitle="Esta sessão será excluída do histórico." onClose={closeModal}>
           {actionError && <p role="alert">{actionError}</p>}

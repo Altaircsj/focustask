@@ -2,6 +2,7 @@ package br.edu.ufersa.pw.focustask.features.user;
 
 import br.edu.ufersa.pw.focustask.shared.exception.EntidadeNaoEncontradaException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -22,5 +23,13 @@ class UserInternalApiImpl implements UserInternalApi {
     @Override
     public boolean existePorId(Long id) {
         return id != null && repository.existsById(id);
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void bloquearUsuario(Long id) {
+        if (id == null || repository.lockById(id).isEmpty()) {
+            throw new EntidadeNaoEncontradaException("User not found");
+        }
     }
 }

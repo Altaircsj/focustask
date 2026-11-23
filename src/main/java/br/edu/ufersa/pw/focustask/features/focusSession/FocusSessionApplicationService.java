@@ -8,6 +8,7 @@ import br.edu.ufersa.pw.focustask.features.task.TaskInternalApi;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
+import java.time.ZoneOffset;
 import java.util.List;
 
 @Service
@@ -47,15 +48,18 @@ class FocusSessionApplicationService {
                 .orElseThrow(() -> new EntidadeNaoEncontradaException("Focus session not found")));
     }
 
+    /** A nova sessão nasce RUNNING; a que estava rodando é pausada no mesmo instante e na mesma transação. */
     @Transactional
     public FocusSessionResponseDTO create(Long userId, FocusSessionCreateDTO dto) {
-        requireUser(userId);
+        lockUser(userId);
         domain.validarVinculo(userId, dto.taskId(), dto.projectId());
-        FocusSession session = new FocusSession(userId, clock);
+        Clock moment = moment();
+        FocusSession session = new FocusSession(userId, moment);
         if (dto.projectId() != null) session.setDirectProject(dto.projectId());
         else session.setTaskId(dto.taskId());
         session.setTitle(dto.title());
-        if (dto.plannedMinutes() != null) session.planDuration(dto.plannedMinutes(), clock);
+        if (dto.plannedMinutes() != null) session.planDuration(dto.plannedMinutes(), moment);
+        pauseOthers(userId, session, moment);
         return mapper.toResponse(repository.save(session));
     }
 
@@ -66,24 +70,27 @@ class FocusSessionApplicationService {
 
     @Transactional
     public FocusSessionResponseDTO update(Long userId, Long sessionId, FocusSessionUpdateDTO dto) {
+        lockUser(userId);
         FocusSession session = forUpdate(userId, sessionId);
         domain.validarVinculo(userId, dto.taskId(), null);
-        changeStatus(session, dto.status());
+        changeStatus(userId, session, dto.status(), moment());
         session.setTaskId(dto.taskId());
         return mapper.toResponse(session);
     }
 
     @Transactional
     public FocusSessionResponseDTO patch(Long userId, Long sessionId, FocusSessionPatchDTO dto) {
+        lockUser(userId);
         FocusSession session = forUpdate(userId, sessionId);
+        Clock moment = moment();
         FocusSessionAssociationDTO association = dto.association();
         if (dto.taskId() != null && association != null) {
             throw new OperacaoInvalidaException("Envie apenas uma associação.");
         }
         if (dto.taskId() != null) association = new FocusSessionAssociationDTO(dto.taskId(), null);
         if (association != null) domain.validarVinculo(userId, association.taskId(), association.projectId());
-        if (dto.status() != null) changeStatus(session, dto.status());
-        if (dto.plannedMinutes() != null) session.planDuration(dto.plannedMinutes(), clock);
+        if (dto.status() != null) changeStatus(userId, session, dto.status(), moment);
+        if (dto.plannedMinutes() != null) session.planDuration(dto.plannedMinutes(), moment);
         if (dto.title() != null) session.setTitle(dto.title());
         if (association != null) {
             if (association.taskId() != null) session.setTaskId(association.taskId());
@@ -94,15 +101,50 @@ class FocusSessionApplicationService {
 
     @Transactional
     public void delete(Long userId, Long sessionId) {
+        lockUser(userId);
         repository.delete(forUpdate(userId, sessionId));
     }
 
-    private void changeStatus(FocusSession session, FocusSessionStatusDTO status) {
+    private void changeStatus(Long userId, FocusSession session, FocusSessionStatusDTO status, Clock moment) {
         switch (status) {
-            case RUNNING -> session.resume(clock);
-            case PAUSED -> session.pause(clock);
-            case COMPLETED -> session.complete(clock);
+            case RUNNING -> activate(userId, session, moment);
+            case PAUSED -> session.pause(moment);
+            case COMPLETED -> session.complete(moment);
         }
+    }
+
+    /**
+     * Play: valida o destino antes de mexer em qualquer outra sessão, pausa as demais que estiverem
+     * rodando e retoma a escolhida, tudo com o mesmo instante. Repetir Play numa sessão que já roda
+     * não altera os tempos dela.
+     */
+    private void activate(Long userId, FocusSession session, Clock moment) {
+        session.requireActivatable();
+        pauseOthers(userId, session, moment);
+        session.resume(moment);
+    }
+
+    private void pauseOthers(Long userId, FocusSession keep, Clock moment) {
+        for (FocusSession other : repository.findAllForUpdateByUserIdAndStatus(userId, FocusSessionStatus.RUNNING)) {
+            if (!isSame(other, keep)) other.pause(moment);
+        }
+    }
+
+    private static boolean isSame(FocusSession a, FocusSession b) {
+        return a == b || (a.getId() != null && a.getId().equals(b.getId()));
+    }
+
+    /** Um único instante do servidor para toda a operação, para que pausar A e ativar B coincidam. */
+    private Clock moment() {
+        return Clock.fixed(clock.instant(), ZoneOffset.UTC);
+    }
+
+    /**
+     * Coordena as escritas por usuário: bloqueia a linha do usuário antes de qualquer outra leitura.
+     * Bloquear apenas a linha da sessão destino não impediria duas abas de ativarem sessões diferentes.
+     */
+    private void lockUser(Long userId) {
+        users.bloquearUsuario(userId);
     }
 
     private FocusSession forUpdate(Long userId, Long sessionId) {

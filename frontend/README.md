@@ -103,14 +103,14 @@ este trabalho. Não houve deploy ou teste do serviço remoto.
 | `src/features/auth/auth.css` | Estilos específicos dos formulários de autenticação |
 | `src/features/auth/validation.js` | Limites dos DTOs, incluindo 72 bytes UTF-8 |
 | `src/routes/AppRoutes.jsx` | Rotas públicas e grupo de páginas que exigem usuário autenticado |
-| `src/features/dashboard/pages/DashboardPage.jsx` | Painel com resumo, cronômetro de 25 minutos por padrão e tarefas do dia |
+| `src/features/dashboard/pages/DashboardPage.jsx` | Painel e único player completo: resumo, tarefas do dia e a sessão que roda, a última ativada ou a de `?sessao=ID` (só consulta); Play/Pause age na sessão exibida e "Foco avulso"/"Foco com tarefa" criam outro foco |
 | `src/features/dashboard/components/Modal.jsx` | Diálogo base (Esc e clique fora fecham) |
 | `src/features/dashboard/components/NewFocusModal.jsx` | Modal "Nova Sessão de Foco": projeto, tarefa e duração |
 | `src/features/dashboard/components/CompletedSessionModal.jsx` | Modal "Sessão concluída" ao zerar o cronômetro |
 | `src/features/dashboard/dashboardService.js` | Concluir tarefa (`PATCH /tasks/{id}`) e duração preferida (localStorage) |
 | `src/features/dashboard/summary.js` | Lógica pura: saudação, resumo, cronômetro e tarefas do dia |
 | `src/features/dashboard/dashboard.css` | Estilos específicos do painel |
-| `src/features/focusSessions/pages/FocusSessionsPage.jsx` | Histórico em `/focus-sessions`: filtros Todas/Avulsa/Tarefa, pausar, retomar, concluir e excluir |
+| `src/features/focusSessions/pages/FocusSessionsPage.jsx` | Histórico em `/focus-sessions`: filtros, título como link para `/dashboard?sessao=ID`, Pausar/Retomar/Concluir direto na linha e Editar/Excluir no menu |
 | `src/features/focusSessions/pages/NewFocusSessionPage.jsx` | Criação em `/focus-sessions/new`: projeto e tarefa opcionais; sem tarefa a sessão é avulsa |
 | `src/features/tasks/pages/TaskDetailPage.jsx` | Detalhes da tarefa em `/tasks/:taskId`: dados, histórico de sessões, iniciar sessão, editar e excluir |
 | `src/features/tasks/pages/TasksPage.jsx` | Lista em `/tasks`: filtros Todas/Pendentes/Em Andamento/Concluídas, concluir pelo checkbox, editar e excluir |
@@ -132,9 +132,13 @@ este trabalho. Não houve deploy ou teste do serviço remoto.
 | `src/features/profile/profile.css` | Estilos específicos do perfil |
 | `src/layouts/initials.js` | Iniciais do nome, usadas no menu lateral e no perfil |
 | `src/features/focusSessions/focusSessionService.js`, `format.js` | Chamadas à API e cálculo/formatação da duração (descontando pausas) |
+| `src/features/focusSessions/sessionInfo.js` | Lógica pura: sessão que roda, última que recebeu Play, nomes (player e listas) e reflexo local da troca de sessão |
 | `src/features/focusSessions/focus-sessions.css` | Estilos das duas páginas de sessões |
 | `src/layouts/AppLayout.jsx`, `src/layouts/app-layout.css` | Estrutura das rotas autenticadas: menu lateral à esquerda e a página (`Outlet`) ao lado |
 | `src/layouts/components/SideBar.jsx`, `src/layouts/components/sidebar.css` | Menu lateral do Figma: rotas com destaque da atual (`NavLink`), nome e e-mail do `useAuth` |
+| `src/layouts/PublicLayout.jsx` | Envolve login, cadastro e 404 com o seletor de tema no canto superior direito |
+| `src/features/theme/theme.js` | Tema claro/escuro: lê e salva a escolha (`focustask.theme`), aplica `data-theme` em `<html>` e acompanha o sistema no modo automático |
+| `src/features/theme/useTheme.js`, `ThemeToggle.jsx`, `theme.css` | Hook e botões Automático/Claro/Escuro (no menu lateral e nas páginas públicas) |
 
 O token fica no `sessionStorage` da aba, na chave `focustask.token`. O usuário
 fica em memória. Ao iniciar, `useEffect` verifica `/me` antes de liberar as rotas.
@@ -147,6 +151,10 @@ Falhas de conexão e respostas diferentes de 401 durante a recuperação preserv
 o token e exibem Tentar novamente. Os efeitos cancelam requisições e invalidam
 respostas antigas no logout/desmonte, inclusive no StrictMode. Um 401 atrasado
 com token de sessão anterior não remove um token novo.
+
+### Tema claro e escuro
+
+O seletor tem três opções: **Automático** (segue o sistema, inclusive ao vivo), **Claro** e **Escuro**. A escolha fica no `localStorage` (`focustask.theme`) e vale em todas as abas. O tema é aplicado como `data-theme` em `<html>`; um script em `index.html` faz isso antes do React carregar, evitando o flash de tema errado. As cores ficam em variáveis CSS (`src/index.css`; `--brand*` em `app-layout.css`): use `var(--...)` em vez de cores fixas e confira a tela nos dois temas.
 
 ### Alterar a senha pelo Perfil
 

@@ -2,6 +2,7 @@ import { NavLink } from 'react-router'
 import { AlarmClock, Folder, LayoutDashboard, ListCheck, Timer, User } from 'lucide-react'
 import { useAuth } from '../../features/auth/useAuth'
 import { getInitials } from '../initials'
+import ThemeToggle from '../../features/theme/ThemeToggle'
 import './sidebar.css'
 
 const navItems = [
@@ -31,11 +32,14 @@ export default function SideBar() {
           ))}
         </nav>
       </div>
-      <div className="sidebar-user">
+      <div className="sidebar-bottom">
+        <ThemeToggle />
+        <div className="sidebar-user">
         <span className="sidebar-avatar" aria-hidden="true">{getInitials(user.name)}</span>
         <div className="sidebar-user-details">
           <p className="sidebar-user-name">{user.name}</p>
           <p className="sidebar-user-email" title={user.email}>{user.email}</p>
+        </div>
         </div>
       </div>
     </aside>

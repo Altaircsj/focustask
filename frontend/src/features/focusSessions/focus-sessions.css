@@ -2,7 +2,7 @@
 .sessions-page h1 { margin: 0; font-size: 28px; font-weight: 700; letter-spacing: normal; }
 .sessions-page p { margin: 0; }
 .sessions-page [role="alert"] { margin: 0 0 16px; color: var(--text-h); border-left: 3px solid var(--brand); padding-left: 10px; }
-.sessions-page a { color: var(--brand); }
+.sessions-page a { color: var(--brand-ink); }
 
 .sessions-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 32px; }
 .sessions-header p { margin-top: 4px; color: var(--text); }
@@ -67,12 +67,12 @@
 .col-duration { width: 120px; }
 .col-project { width: 150px; }
 .col-type { width: 100px; }
-.col-actions { width: 40px; }
+.col-actions { width: 220px; }
 
-.session-status { display: block; margin-top: 2px; color: var(--brand); font-size: 11px; font-weight: 600; }
+.session-status { display: block; margin-top: 2px; color: var(--brand-ink); font-size: 11px; font-weight: 600; }
 
 .badge { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
-.badge-task, .badge-project { background: var(--brand-bg); color: var(--brand); }
+.badge-task, .badge-project { background: var(--brand-bg); color: var(--brand-ink); }
 .badge-standalone { background: color-mix(in srgb, var(--text) 8%, var(--bg)); color: var(--text); }
 
 .row-menu { position: relative; display: flex; justify-content: flex-end; }
@@ -135,3 +135,27 @@
   .sessions-page { padding: 24px 16px; }
   .sessions-header { flex-direction: column; align-items: flex-start; }
 }
+
+.session-link { color: var(--brand-ink); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.session-link:hover { text-decoration-thickness: 2px; }
+.session-link:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 4px; }
+
+.row-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+.row-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.row-control:hover:not(:disabled) { background: var(--brand-bg); color: var(--brand-ink); }
+.row-control:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.row-control:disabled { opacity: 0.5; cursor: not-allowed; }
+.row-done { color: var(--text); font-size: 12px; font-weight: 600; }

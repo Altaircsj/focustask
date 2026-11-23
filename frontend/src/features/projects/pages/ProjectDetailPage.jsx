@@ -9,11 +9,14 @@ import { formatDueDate, formatFocusedSeconds, formatMinutes } from '../../tasks/
 import { createTask, taskService } from '../../tasks/taskService'
 import ProjectFormModal from '../components/ProjectFormModal'
 import { projectService } from '../projectService'
-import { focusedByTask, projectStats } from '../summary'
+import { activeSeconds, formatDuration } from '../../focusSessions/format'
+import { listTitle, sessionLink } from '../../focusSessions/sessionInfo'
+import { focusedByTask, projectSessions, projectStats } from '../summary'
 import '../../dashboard/dashboard.css'
 import '../projects.css'
 
 const MENU = [{ id: 'edit', label: 'Editar' }, { id: 'delete', label: 'Excluir' }]
+const SESSION_STATE = { RUNNING: 'Em andamento', PAUSED: 'Pausada', COMPLETED: 'Concluída' }
 const TASK_STATE = { TODO: 'Pendente', IN_PROGRESS: 'Em andamento', DONE: '✓ Concluída' }
 
 function estimateCaption({ estimatedMinutes, estimatedCount, total }) {
@@ -81,6 +84,8 @@ export default function ProjectDetailPage() {
   }
 
   const stats = projectStats(project, tasks, data.sessions)
+  const sessions = projectSessions(project, data.tasks, data.sessions)
+  const taskById = new Map(data.tasks.map((task) => [task.id, task]))
   return (
     <main className="dashboard-page projects-page">
       <header className="page-header">
@@ -138,6 +143,28 @@ export default function ProjectDetailPage() {
           </button>
         </li>
       </ul>
+
+      <section className="project-sessions-section" aria-labelledby="project-sessions">
+        <h2 id="project-sessions">Sessões do projeto</h2>
+        {sessions.length === 0 ? (
+          <p className="tasks-empty">Nenhuma sessão de foco neste projeto ainda.</p>
+        ) : (
+          <ul className="project-sessions">
+            {sessions.map((session) => {
+              const title = listTitle(session, taskById.get(session.taskId), project)
+              return (
+                <li key={session.id} className="project-session-row">
+                  <div>
+                    <strong>{title}</strong>
+                    <span>{SESSION_STATE[session.status]} · {formatDuration(activeSeconds(session))}</span>
+                  </div>
+                  <Link to={sessionLink(session.id)} className="dash-btn" aria-label={`Abrir no Painel: ${title}`}>Abrir no Painel</Link>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </section>
 
       {modal?.type === 'project' && <ProjectFormModal project={project} busy={busy} error={error} onSave={saveProject} onClose={closeModal} />}
       {modal?.type === 'task' && <TaskFormModal task={modal.task} projects={data.projects} defaultProjectId={project.id} busy={busy} error={error} onSave={saveTask} onClose={closeModal} />}

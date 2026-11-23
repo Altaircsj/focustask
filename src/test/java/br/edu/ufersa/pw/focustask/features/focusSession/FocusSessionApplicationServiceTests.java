@@ -158,6 +158,7 @@ class FocusSessionApplicationServiceTests {
 
     @Test
     void rejectsMissingUserAndScopedSessionBeforeWriting() {
+        doThrow(new EntidadeNaoEncontradaException("User not found")).when(users).bloquearUsuario(1L);
         assertEquals("User not found",
                 assertThrows(EntidadeNaoEncontradaException.class,
                 () -> service.create(1L, new FocusSessionCreateDTO(null))).getMessage());

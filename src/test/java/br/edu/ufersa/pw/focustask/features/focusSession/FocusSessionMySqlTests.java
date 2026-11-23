@@ -111,4 +111,65 @@ class FocusSessionMySqlTests extends MySqlIntegrationTest {
             executor.shutdownNow();
         }
     }
+
+    private int count(String status, long userId) {
+        return jdbc.queryForObject("select count(*) from focus_sessions where user_id=? and status=?",
+                Integer.class, userId, status);
+    }
+
+    @Test
+    void switchingPausesAndActivatesWithTheSameInstantAndKeepsOtherAccountsRunning() {
+        long owner = user("switch@example.com");
+        long stranger = user("switch-stranger@example.com");
+        long strangerSession = service.create(stranger, new FocusSessionCreateDTO(null)).id();
+        long a = service.create(owner, new FocusSessionCreateDTO(null)).id();
+        long b = service.create(owner, new FocusSessionCreateDTO(null)).id();
+        assertEquals(jdbc.queryForObject("select started_at from focus_sessions where id=?", java.sql.Timestamp.class, b),
+                jdbc.queryForObject("select paused_at from focus_sessions where id=?", java.sql.Timestamp.class, a));
+
+        service.patch(owner, a, new FocusSessionPatchDTO(null, FocusSessionStatusDTO.RUNNING));
+
+        assertEquals(1, count("RUNNING", owner));
+        assertEquals("RUNNING", jdbc.queryForObject("select status from focus_sessions where id=?", String.class, a));
+        assertEquals(jdbc.queryForObject("select last_activated_at from focus_sessions where id=?", java.sql.Timestamp.class, a),
+                jdbc.queryForObject("select paused_at from focus_sessions where id=?", java.sql.Timestamp.class, b));
+        assertEquals("RUNNING", jdbc.queryForObject("select status from focus_sessions where id=?", String.class, strangerSession));
+    }
+
+    @Test
+    void concurrentCreationsAndPlaysLeaveAtMostOneRunningSessionPerUser() throws Exception {
+        long owner = user("race@example.com");
+        long stranger = user("race-stranger@example.com");
+        long strangerSession = service.create(stranger, new FocusSessionCreateDTO(null)).id();
+        long first = service.create(owner, new FocusSessionCreateDTO(null)).id();
+        long second = service.create(owner, new FocusSessionCreateDTO(null)).id();
+        service.patch(owner, second, new FocusSessionPatchDTO(null, FocusSessionStatusDTO.PAUSED));
+
+        int attempts = 8;
+        var executor = java.util.concurrent.Executors.newFixedThreadPool(attempts);
+        var start = new java.util.concurrent.CountDownLatch(1);
+        try {
+            var futures = new java.util.ArrayList<java.util.concurrent.Future<?>>();
+            for (int i = 0; i < attempts; i++) {
+                final int n = i;
+                futures.add(executor.submit(() -> {
+                    start.await(10, java.util.concurrent.TimeUnit.SECONDS);
+                    if (n % 3 == 0) return service.create(owner, new FocusSessionCreateDTO(null));
+                    long target = n % 3 == 1 ? first : second;
+                    return service.patch(owner, target, new FocusSessionPatchDTO(null, FocusSessionStatusDTO.RUNNING));
+                }));
+            }
+            start.countDown();
+            for (var future : futures) future.get(30, java.util.concurrent.TimeUnit.SECONDS);
+        } finally {
+            start.countDown();
+            executor.shutdownNow();
+        }
+
+        assertEquals(1, count("RUNNING", owner));
+        assertEquals(0, jdbc.queryForObject("select count(*) from focus_sessions where user_id=? and status='RUNNING' and paused_at is not null",
+                Integer.class, owner));
+        assertEquals(1, count("RUNNING", stranger));
+        assertEquals("RUNNING", jdbc.queryForObject("select status from focus_sessions where id=?", String.class, strangerSession));
+    }
 }

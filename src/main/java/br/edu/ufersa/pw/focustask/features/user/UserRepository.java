@@ -16,6 +16,10 @@ interface UserRepository extends JpaRepository<User, Long> {
     @Query("select u from User u where u.id = :id")
     Optional<User> findForPasswordChange(@Param("id") Long id);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from User u where u.id = :id")
+    Optional<User> lockById(@Param("id") Long id);
+
     boolean existsByEmail(String email);
     boolean existsByEmailAndIdNot(String email, Long id);
 }

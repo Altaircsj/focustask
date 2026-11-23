@@ -19,7 +19,7 @@ class FocusSessionMapperTests {
         FocusSession session = new FocusSession(7L, at(0));
         ReflectionTestUtils.setField(session, "id", 8L);
         assertEquals(new FocusSessionResponseDTO(8L, 7L, null, FocusSessionStatusDTO.RUNNING,
-                start, null, null, 0, null, null, null), mapper.toResponse(session));
+                start, null, null, 0, null, null, null, start), mapper.toResponse(session));
         session.setTaskId(123L);
         session.pause(at(60));
         var paused = mapper.toResponse(session);
@@ -30,7 +30,7 @@ class FocusSessionMapperTests {
         session.complete(at(90));
         var completed = mapper.toResponse(session);
         assertEquals(new FocusSessionResponseDTO(8L, 7L, 123L, FocusSessionStatusDTO.COMPLETED,
-                start, start.plusSeconds(90), null, 30, null, null, null), completed);
+                start, start.plusSeconds(90), null, 30, null, null, null, start), completed);
         assertEquals(List.of(completed), mapper.toResponseList(List.of(session)));
         assertEquals(30, session.getTotalPausedSeconds());
         assertEquals(FocusSessionStatus.COMPLETED, session.getStatus());

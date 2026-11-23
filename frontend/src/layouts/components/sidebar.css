@@ -1,6 +1,7 @@
 .sidebar {
-  --sidebar-accent: #4d49fc;
-  --sidebar-accent-bg: rgba(77, 73, 252, 0.08);
+  --sidebar-accent: var(--brand);
+  --sidebar-accent-bg: var(--brand-bg);
+  --sidebar-ink: var(--brand-ink);
 
   width: 240px;
   flex-shrink: 0;
@@ -50,9 +51,12 @@
 }
 .sidebar-link svg { flex-shrink: 0; color: var(--text); }
 .sidebar-link:hover { background: var(--accent-bg); }
-.sidebar-link.active { background: var(--sidebar-accent-bg); color: var(--sidebar-accent); font-weight: 600; }
-.sidebar-link.active svg { color: var(--sidebar-accent); }
-.sidebar-link:focus-visible { outline: 2px solid var(--sidebar-accent); outline-offset: 2px; }
+.sidebar-link.active { background: var(--sidebar-accent-bg); color: var(--sidebar-ink); font-weight: 600; }
+.sidebar-link.active svg { color: var(--sidebar-ink); }
+.sidebar-link:focus-visible { outline: 2px solid var(--sidebar-ink); outline-offset: 2px; }
+
+.sidebar-bottom { display: flex; flex-direction: column; gap: 16px; }
+.sidebar-bottom .theme-toggle { align-self: flex-start; }
 
 .sidebar-user {
   display: flex;

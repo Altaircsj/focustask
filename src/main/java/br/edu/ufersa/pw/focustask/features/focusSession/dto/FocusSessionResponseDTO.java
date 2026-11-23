@@ -13,5 +13,6 @@ public record FocusSessionResponseDTO(
         long totalPausedSeconds,
         Long projectId,
         String title,
-        Integer plannedMinutes
+        Integer plannedMinutes,
+        Instant lastActivatedAt
 ) {}

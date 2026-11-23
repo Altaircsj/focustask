@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router'
-import { Menu } from 'lucide-react'
+import { Menu, Pause, Play, SquareCheck } from 'lucide-react'
 import { catalogService, focusSessionService } from '../focusSessionService'
 import { activeSeconds, formatDuration, formatStartedAt } from '../format'
+import { applyActivation, listTitle, sessionLink } from '../sessionInfo'
 import { DEFAULT_MINUTES } from '../../dashboard/summary'
 import { loadMinutes } from '../../dashboard/dashboardService'
 import CompletedSessionModal from '../../dashboard/components/CompletedSessionModal'
@@ -18,13 +19,13 @@ const FILTERS = [
 ]
 const STATUS_LABEL = { RUNNING: 'Em andamento', PAUSED: 'Pausada' }
 
-function rowActions(session) {
-  const actions = [{ id: 'edit', label: 'Editar' }]
-  if (session.status === 'RUNNING') actions.push({ id: 'PAUSED', label: 'Pausar' })
-  if (session.status === 'PAUSED') actions.push({ id: 'RUNNING', label: 'Retomar' })
-  if (session.status !== 'COMPLETED') actions.push({ id: 'COMPLETED', label: 'Concluir' })
-  actions.push({ id: 'delete', label: 'Excluir' })
-  return actions
+const MENU_ACTIONS = [{ id: 'edit', label: 'Editar' }, { id: 'delete', label: 'Excluir' }]
+
+// Controles diretos da linha: pausar/retomar e concluir; sessões concluídas só mostram o estado.
+function rowControls(session) {
+  if (session.status === 'RUNNING') return [{ status: 'PAUSED', label: 'Pausar', icon: Pause }, { status: 'COMPLETED', label: 'Concluir', icon: SquareCheck }]
+  if (session.status === 'PAUSED') return [{ status: 'RUNNING', label: 'Retomar', icon: Play }, { status: 'COMPLETED', label: 'Concluir', icon: SquareCheck }]
+  return []
 }
 
 export default function FocusSessionsPage() {
@@ -35,6 +36,8 @@ export default function FocusSessionsPage() {
   const [actionError, setActionError] = useState('')
   const [now, setNow] = useState(() => Date.now())
   const [editing, setEditing] = useState(null)
+  const [busyId, setBusyId] = useState(null)
+  const working = useRef(false)
   const [saving, setSaving] = useState(false)
   const [editError, setEditError] = useState('')
 
@@ -87,26 +90,44 @@ export default function FocusSessionsPage() {
     setAttempt((value) => value + 1)
   }
 
-  async function runAction(session, action) {
+  // Uma ação por vez: cliques repetidos são ignorados e as respostas não se ultrapassam.
+  async function guarded(session, request, onDone) {
+    if (working.current) return
+    working.current = true
+    setBusyId(session.id)
+    setActionError('')
+    try {
+      onDone(await request())
+    } catch (error) {
+      setActionError(error.message)
+      // O estado local pode estar defasado (sessão concluída ou excluída em outra aba): relê do servidor.
+      try {
+        const fresh = await focusSessionService.list()
+        if (Array.isArray(fresh)) setData((current) => ({ ...current, sessions: fresh }))
+      } catch { /* mantém o que já está na tela */ }
+    } finally {
+      working.current = false
+      setBusyId(null)
+    }
+  }
+
+  // A resposta traz a sessão alterada; ao retomar, a que rodava passa a pausada na própria lista.
+  function changeStatus(session, status) {
+    return guarded(session, () => focusSessionService.setStatus(session.id, status),
+      (updated) => setData((current) => ({ ...current, sessions: applyActivation(current.sessions, updated) })))
+  }
+
+  function runAction(session, action) {
     setMenuId(null)
     setActionError('')
     if (action === 'edit') {
       setEditError('')
       setEditing(session)
-      return
+      return undefined
     }
-    if (action === 'delete' && !window.confirm('Excluir esta sessão? Essa ação não pode ser desfeita.')) return
-    try {
-      if (action === 'delete') {
-        await focusSessionService.remove(session.id)
-        setData((current) => ({ ...current, sessions: current.sessions.filter((item) => item.id !== session.id) }))
-      } else {
-        const updated = await focusSessionService.setStatus(session.id, action)
-        setData((current) => ({ ...current, sessions: current.sessions.map((item) => (item.id === updated.id ? updated : item)) }))
-      }
-    } catch (error) {
-      setActionError(error.message)
-    }
+    if (!window.confirm('Excluir esta sessão? Essa ação não pode ser desfeita.')) return undefined
+    return guarded(session, () => focusSessionService.remove(session.id),
+      () => setData((current) => ({ ...current, sessions: current.sessions.filter((item) => item.id !== session.id) })))
   }
 
   async function saveEdit(details) {
@@ -178,7 +199,7 @@ export default function FocusSessionsPage() {
                       {formatDuration(activeSeconds(session, now))}
                       {session.status !== 'COMPLETED' && <span className="session-status">{STATUS_LABEL[session.status]}</span>}
                     </td>
-                    <td>{session.title || '—'}</td>
+                    <td><Link className="session-link" to={sessionLink(session.id)}>{listTitle(session, task, project)}</Link></td>
                     <td className={task ? undefined : 'muted'}>{task?.title ?? '—'}</td>
                     <td className={`col-project${project ? '' : ' muted'}`}>{project?.name ?? '—'}</td>
                     <td>
@@ -187,6 +208,14 @@ export default function FocusSessionsPage() {
                       </span>
                     </td>
                     <td className="col-actions">
+                      <div className="row-actions">
+                      {session.status === 'COMPLETED' && <span className="row-done">Concluída</span>}
+                      {rowControls(session).map(({ status, label, icon: Icon }) => (
+                        <button key={status} type="button" className="row-control" disabled={busyId !== null}
+                          aria-label={`${label} sessão: ${listTitle(session, task, project)}`} onClick={() => changeStatus(session, status)}>
+                          <Icon size={12} aria-hidden="true" />{label}
+                        </button>
+                      ))}
                       <div className="row-menu">
                         <button type="button" className="row-menu-trigger" aria-label="Ações da sessão" aria-haspopup="true"
                           aria-expanded={menuId === session.id} onClick={() => setMenuId(menuId === session.id ? null : session.id)}>
@@ -194,11 +223,12 @@ export default function FocusSessionsPage() {
                         </button>
                         {menuId === session.id && (
                           <ul className="row-menu-list">
-                            {rowActions(session).map((action) => (
-                              <li key={action.id}><button type="button" onClick={() => runAction(session, action.id)}>{action.label}</button></li>
+                            {MENU_ACTIONS.map((action) => (
+                              <li key={action.id}><button type="button" disabled={busyId !== null} onClick={() => runAction(session, action.id)}>{action.label}</button></li>
                             ))}
                           </ul>
                         )}
+                      </div>
                       </div>
                     </td>
                   </tr>

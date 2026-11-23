@@ -48,6 +48,32 @@ class FocusSessionTests {
     }
 
     @Test
+    void lastActivationIsTheCreationAndEveryRealResumeButNotRepeatedPlayOrPause() {
+        FocusSession session = new FocusSession(1L, at(0));
+        assertEquals(START, session.getLastActivatedAt());
+
+        session.pause(at(60));
+        assertEquals(START, session.getLastActivatedAt());
+        session.resume(at(120));
+        assertEquals(START.plusSeconds(120), session.getLastActivatedAt());
+        session.resume(at(180));
+        assertEquals(START.plusSeconds(120), session.getLastActivatedAt());
+        session.complete(at(240));
+        assertEquals(START.plusSeconds(120), session.getLastActivatedAt());
+    }
+
+    @Test
+    void onlyCompletedSessionsAreNotActivatable() {
+        FocusSession session = new FocusSession(1L, at(0));
+        session.requireActivatable();
+        session.pause(at(10));
+        session.requireActivatable();
+        session.complete(at(20));
+        assertEquals("A completed session cannot be resumed",
+                assertThrows(OperacaoInvalidaException.class, session::requireActivatable).getMessage());
+    }
+
+    @Test
     void completedSessionCannotBePausedOrResumed() {
         FocusSession session = new FocusSession(1L, at(0));
         session.complete(at(60));
