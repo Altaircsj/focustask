@@ -14,7 +14,7 @@ backend; não copie suas credenciais para o frontend.
 No PowerShell, na raiz:
 
 ```powershell
-$env:JAVA_HOME = 'C:\Users\Carol\.jdks\ms-21.0.9'
+$env:JAVA_HOME = 'C:\Users\Nome-do-Usuário\.jdks\ms-21.0.9'
 $env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
 .\mvnw.cmd spring-boot:run '-Dspring-boot.run.profiles=dev'
 ```
